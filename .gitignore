@@ -8,7 +8,7 @@
 *.Rdata
 *.RData
 out*
-!output/ITA_fit.Rdata
+!./output/ITA_fit.Rdata
 /rdata/*
 /figures/*
 *.pdf
