@@ -15,3 +15,5 @@ output/*
 /figures/*
 *.pdf
 *.html
+!application-countries/BSP_stepbystep.html
+
