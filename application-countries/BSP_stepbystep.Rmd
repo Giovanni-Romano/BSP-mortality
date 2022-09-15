@@ -1,0 +1,596 @@
+---
+title: "Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients"
+author: "Federico Pavone, Sirio Legramanti, and Daniele Durante"
+date: "`r format(Sys.time(), '%d/%m/%Y')`"
+output:
+  html_document:
+    code_folding: show
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, 
+                      warning = FALSE, 
+                      message = FALSE,
+                      class.source = "foldable",
+                      fig.align = 'center')
+```
+
+The purpose of this notebook is to show step-by-step how to implement and fit the proposed BSP model. Refer to the paper for a detailed explanation of the model. The complete code to generate all the results of the paper can be run via `main.R`.
+
+As an example, we consider Italian mortality from 1933 to 2019. 
+
+# Working Environment Setup
+
+If you have not done it before, run the following line to create the `Rdata` file containg the mortality rates for Italy and other countries.
+```{r data_processing}
+library(here)
+source(here('source','data_processing.R'))
+```
+
+Then, load and source all the necessary libraries and functions. The package `KFAS` is used to implement the state-space formulation of the model, whereas the other packages are mostly to handle data and to generate plots. We source also functions in the `source` folder.
+```{r setup_environment}
+library(tidyverse)
+library(KFAS)
+library(doParallel)
+library(plotly)
+library(ggh4x)
+library(ggrepel)
+library(patchwork)
+library(latex2exp)
+library(reactable)
+source(here('source','BSP.R'))
+source(here('source','setup.R'))
+source(here('source','helper_fun.R'))
+set.seed(4238)
+theme_set(
+  theme_light() +
+    theme(
+      strip.background = element_rect(color = 'gray', fill = 'white'),
+      strip.text.x = element_text(color = 'black'),
+      strip.text.y = element_text(color = 'black')
+    )
+)
+```
+
+# Data Loading and Exploration
+
+Let's load the data and visualize it. We create a 3d-plot of the log-mortality rates of Italy (overall population), highlighting years 1970 and 2005, and ages 23 and 60. 
+
+We can notice the overall decreasing trend of the mortality across all ages, together with generally higher mortality for newborns and older people. Moreover, we see how the age-wise behaviour is smoother than the year-wise one. The shock in the '40s is due to World War II.
+```{r data, class.source = 'fold-hide'}
+load(here('output','mortality.Rdata'))
+
+as_tibble(log((Y_ita_man + Y_ita_woman)/(N_ita_man + N_ita_woman))) %>%
+  mutate(year = years[1:(length(years)-1)]) %>%
+  pivot_longer(-year, names_to = 'age', values_to = 'value') %>%
+  mutate_at(vars(age), as.numeric) %>%
+  pivot_wider(names_from = age, values_from = value) %>%
+  select(-year) %>%
+  as.matrix() %>% 
+  t() -> data3d_ita
+colnames(data3d_ita) <- years[1:(length(years)-1)]
+
+plot_ly(z=~data3d_ita,
+        x = years[1:(length(years)-1)]) %>%
+  add_surface(alpha = 0.8,
+              colors = "Spectral",
+              reversescale = TRUE) %>%
+  add_trace(x = rep(1970, 101), 
+            y = 0:100, 
+            z = data3d_ita[,'1970'], 
+            mode = 'lines',
+            type = 'scatter3d',
+            line = list(color = '#037A73',
+                        width = 6)) %>%
+  add_trace(x = rep(2005, 101), 
+            y = 0:100, 
+            z = data3d_ita[,'2005'], 
+            mode = 'lines',
+            type = 'scatter3d',
+            line = list(color = '#037A73',
+                        width = 6)) %>%
+  add_trace(x = years[1:(length(years)-1)],
+            y = 23, 
+            z = data3d_ita[24,], 
+            mode = 'lines',
+            type = 'scatter3d',
+            line = list(color = '#7570b3',
+                        width = 6)) %>%
+  add_trace(x = years[1:(length(years)-1)],
+            y = 60, 
+            z = data3d_ita[61,], 
+            mode = 'lines',
+            type = 'scatter3d',
+            line = list(color = '#7570b3',
+                        width = 6)) %>%
+  layout(scene = list(xaxis = list(title = 'Years', showgrid = F,
+                                   linecolor = 'black',
+                                   linewidth = 1.5),
+                      yaxis = list(title = 'Age', showgrid = F,
+                                   linecolor = 'black',
+                                   linewdith = 1.5),
+                      zaxis = list(title = 'log(Rate)', showgrid = F,
+                                   linecolor = 'black',
+                                   linewidth = 1.5),
+                      camera = list(
+                        center = list(x = 0, y = 0, z = -0.1),
+                        eye = list(
+                          x = 1.5,
+                          y = 0.9,
+                          z = 1.5))),
+         showlegend = FALSE) %>%
+  hide_colorbar()
+
+```
+
+We create a list `data_list` with separated rates for males and females to be used in the rest of the analysis.
+```{r}
+data_list <- list(ita_man = Y_ita_man/N_ita_man,
+                  ita_woman = Y_ita_woman/N_ita_woman)
+```
+
+# Model Definition and Fit
+
+We define our model according to the setting specified in `source/setup.R`. In particular, the spline basis is the following:
+```{r spline, class.source = 'fold-hide'}
+S <- mSpline(ages[-1], knots = age_knots, degree = 2, intercept = TRUE)
+K <- ncol(S)
+for (k in 1:K){
+  S[,k] <- S[,k]/max(S[,k])
+}
+colnames(S) <- paste('U', 1:K, sep = '')
+ages_max <- c('U0'=0, apply(S, 2, which.max))
+
+colors_spline <- c("black" = 'grey80',
+                   "color" = '#2c7fb8')
+colors_spline_names <- ifelse(paste('U',0:K,sep='') %in% c('U3','U8','U15'), 
+                              '#2c7fb8', 
+                              'black')
+
+Sfull <- bSpline(seq(1, 100, by = 0.1), knots = age_knots, degree = 2, intercept = TRUE)
+for (k in 1:K){
+  Sfull[,k] <- Sfull[,k]/max(Sfull[,k])
+}
+colnames(Sfull) <- paste('U', 1:K, sep = '')
+
+ages_max_Sfull <- seq(1,100,by=0.1)[apply(Sfull,2,which.max)]
+
+
+UtoG_Tex <- paste('$g_{',20:1,'}(x)$',sep='') %>%
+  sapply(X = .,
+         FUN = . %>% latex2exp::TeX(input = .), USE.NAMES = FALSE)
+  
+cbind('U0' = rep(0, nrow(S)), S) %>%
+  rbind(c(1, rep(0, ncol(S))),.) %>%
+  as_tibble() %>%
+  mutate(age = ages) %>%
+  pivot_longer(-age, names_to = 'weight', values_to = 'value') %>%
+  mutate_at(vars(value), as.numeric) %>%
+  mutate(label = ifelse(weight %in% c('U3','U8','U15'), "color", 'black')) %>%
+  ggplot(aes(x = age,
+             y = factor(weight, 
+                        levels = paste('U', K:0, sep = '')))) +
+  geom_tile(aes(fill = label, alpha = value), colour = "white", size = 0.4) +
+  labs(y = NULL, x = NULL) +
+  guides(fill = "none", alpha = "none") +
+  scale_x_continuous(breaks = seq(0,100,by=5), limits = c(-0.5,100)) + #, sec.axis = dup_axis()) +
+  scale_y_discrete(position = 'left', labels = UtoG_Tex) +
+  scale_fill_manual(values = colors_spline) +
+  scale_alpha_continuous(range = c(0,1)) +
+  theme(panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_blank(),
+        panel.grid.major = element_blank(),
+        panel.grid.minor = element_blank(),
+        text=element_text(size = 9),
+        plot.margin = margin(t = 0),
+        axis.text.y = element_text(colour = rev(colors_spline_names)),
+        axis.ticks.y = element_blank(),
+        axis.ticks.x = element_blank()) -> plot_spline
+
+as_tibble(Sfull)  %>%
+  mutate(age = seq(1, 100, by = 0.1)) %>%
+  pivot_longer(-age, names_to = 'weight', values_to = 'value') %>%
+  mutate_at(vars(value), as.numeric) %>%
+  mutate(label = ifelse(weight %in% c('U3','U8','U15'), "color", 'black')) %>%
+  ggplot(aes(x = age, y = value)) +
+  geom_line(aes(group = weight, color = label, size = label), alpha = 0.8) +
+  geom_segment(aes(x = 0, y = 0, xend = 0, yend = 1),
+              size = 0.3,
+              color = colors_spline['black']) +
+  geom_point(data = tibble(x = c(0,ages_max_Sfull), y = 1), aes(x=x, y=y),
+             shape = 5,
+             size = 0.9) +
+  geom_label_repel(data = tibble(x = c(0,ages_max_Sfull),
+                           y = 1,
+                           label = ages_max),
+             aes(x = x, y = y, label = label),
+             size = 2,
+             segment.size = 0.2,
+             segment.alpha = 0.5,
+             label.size = 0.1,
+             ylim = c(1.05,NA),
+             min.segment.length = 0.1) +
+  scale_size_manual(values = c("black" = 0.4, "color" = 0.8)) +
+  scale_color_manual(values = colors_spline) +
+  scale_x_continuous(limits = c(-0.5,100)) +
+  scale_y_continuous(limits = c(0,1.5)) +
+  labs(x = NULL, y = NULL) +
+  guides(color = "none", alpha = "none", size = "none") +
+  geom_segment(aes(x = 0, y = 0, xend = 100, yend = 0), 
+               color = "grey90", size = 1) +
+  theme(panel.grid = element_blank(),
+        axis.text.y = element_blank(),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        plot.margin = margin(b = 0),
+        axis.ticks.y = element_blank()) -> plot_spline2
+
+plot_spline2 / plot_spline + 
+  plot_layout(height = c(1,2))
+```
+
+The model definition is obtained via the `bsp.model` function. Since we are working on two datasets simultaneously, all operations are done list-wise using `lapply`. 
+
+**Note**: for those who wants to inspect the implementation of `bsp.model` or other functions in `source`, they should keep in mind that the notation of the code uses letter $U$ referring to parameters $\beta$ in the paper.
+```{r model}
+model_list <- lapply(data_list, 
+                     . %>% bsp.model(rates = .,
+                                      delta = delta,
+                                      age_knots = age_knots,
+                                      kernel = matern_kernel))
+```
+
+Once the `KFAS` model is defined, we estimate the hyperparameters using the `bsp.fit` function. To guarantee robustness of the result, it is advisable to repeat the optimization with different starting points. The function allows to specify the argument `rep` and `parallel` to possibly parallelize the optimization with `rep` different starting points. In `source/setup.R`, the default is `rep = 100`. Moreover, following Zhu and Dunson (2013) our implementation includes a penalization on the parameters $\sigma_\beta$ and $\sigma_a$ equivalent to the Inverse-Gamma prior used in their work. Check function `bsp.fit` in `source/BSP.R` for further details.
+```{r fit, eval = FALSE}
+fit_list <- lapply(model_list,
+                   . %>%
+                     bsp.fit(., 
+                              rep = rep, 
+                              method = 'Nelder-Mead', 
+                              parallel = TRUE, 
+                              maxcl = 50))
+```
+
+If parallelization is not feasible for the user, the above code might take long time to run. For this purpouse, we provide the result of the fit in the file `output/ITA_fit.Rdata` (alternatively, one can run the above chunk with a smaller number of `rep`). 
+
+```{r load_fit}
+# If previous chunk not executed
+load(here('output','ITA_fit.Rdata'))
+#
+```
+
+The estimated parameters are
+```{r table, class.source = 'fold-hide'}
+fit_list %>%
+  modify(. %>% 
+           pluck('info') %>%
+           pluck('optim') %>%
+           pluck('par') %>%
+           exp()) %>%
+  imap_dfr(.f = ~ .) %>%
+  mutate(par = c('lambda','sigma2_u','sigma2_a','sigma2_e')) %>%
+  pivot_longer(-par, names_to = 'data', values_to = 'value') %>%
+  pivot_wider(names_from = 'par', values_from = 'value') %>%
+  reactable(columns = list(
+    data = colDef(name = 'Data'),
+    lambda = colDef(name = "Lambda", format = colFormat(digits = 3)),
+    sigma2_u = colDef(name = "Sigma2_beta", format = colFormat(digits = 3)),
+    sigma2_a = colDef(name = "Sigma2_a", format = colFormat(digits = 3)),
+    sigma2_e = colDef(name = "Sigma2_phi", format = colFormat(digits = 3))
+  ))
+```
+Notice that the values of `sigma2_beta`, `sigma2_a`, `sigma2_e` should be related to the scale-parameter `lambda` before comparisons across different data and fits.
+
+# Posterior Distribution via Kalman Smoothing
+
+It is possible to obtain posterior means and variances of the latent states $\beta_{t}$s via Kalman smoothing using the `KFS` function of the `KFAS` library. Specifying the argument `filtering` in `KFS`, it is also possible to obtain the filtering distribution (see documentation of `KFS`).
+```{r smoothing}
+smooth_list <- lapply(fit_list, . %>% 
+                        pluck('fit') %>%
+                        KFS(., smoothing = c('mean', 'state', 'signal'),
+                            simplify = FALSE, 
+                            maxiter = 200))
+```
+
+Once obtained the smoothing distribution, we can prepare plot friendly datasets using the functions available in `source/helper_fun.R` (e.g. `smoothing2tibble`), and plot the results.
+
+```{r}
+lambda_est <- fit_list %>%
+  modify(. %>%
+           pluck('info') %>%
+           pluck('optim') %>%
+           pluck('par') %>%
+           exp() %>%
+           `[`(.,1)) %>%
+  imap_dfr(.f = ~ .)
+
+smoothing_tibble <- lapply(smooth_list, . %>% 
+                                       smoothing2tibble(., country = 'ITA')) %>%
+                                bind_rows(.id = 'data') %>%
+                                mutate(gender = sub(".*_", "", data),
+                                       country = sub("_.*", "", data)) %>%
+                                mutate(state_gender = paste(state, gender, sep = '_'))
+
+smoothing_tibble_adj <- smoothing_tibble %>%
+  filter(state %in% c('U','dU')) %>%
+  mutate(lambda_delta = case_when(state == 'U' ~ 1,
+                                  data == 'ita_man' ~ lambda_est$ita_man*delta,
+                                  data == 'ita_woman' ~ lambda_est$ita_woman*delta)) %>%
+  mutate_at(vars(value, value.sd), ~ .*lambda_delta) %>%
+  mutate_at(vars(gender), ~ ifelse(. == 'man', 'Male', 'Female')) %>%
+  mutate_at(vars(country), .f = toupper)
+```
+
+For example, we can plot the smoothing distribution of $\beta(t)$ together with the first derivative $\partial\beta(t)/\partial t$.
+```{r, class.source = 'fold-hide'}
+age_classes <- tibble(weight = 'U0',
+                      range = 'Newborn')
+for(i in 1:K){
+  range0 <- which(S[,i] > 0.2)
+  age_classes <- bind_rows(age_classes,
+                           tibble(weight = paste('U', i, sep = ''),
+                                  range = paste(min(range0), max(range0), sep = '~')))
+}
+age_classes <- age_classes %>%
+  mutate(max = ages_max) %>%
+  mutate(spline = paste('S',0:K,sep=''))
+
+smoothing_tibble_adj %>%
+  left_join(age_classes, by = "weight") %>%
+  filter(weight %in% c('U0','U7','U11'),
+         gender == 'Female') %>%
+  mutate(label_dem = case_when(range == 'Newborn' ~ 'Infant (age 0)',
+                               range == '23~32' ~ 'Young (age 23 ~ 32)',
+                               range == '46~64' ~ 'Adult (age 46 ~ 64)')) %>%
+  mutate_at(vars(label_dem), . %>% factor(.,
+                                          levels = c('Infant (age 0)',
+                                                     'Young (age 23 ~ 32)',
+                                                     'Adult (age 46 ~ 64)'))) %>%
+  ggplot(aes(x = t, y = value)) + 
+  geom_segment(data = tibble(x = 1933,
+                             y = 0,
+                             xend = 2020,
+                             yend = 0,
+                             state = 'dU'),
+               aes(x = x, y = y, xend = xend, yend = yend),
+               alpha = 0.5, linetype = 'dashed') +
+  geom_line(color = '#abdda4',
+            #alpha = 0.6,
+            size = 0.6) +
+  geom_ribbon(aes(ymin = value - 2*value.sd,
+                  ymax = value + 2*value.sd),  
+              fill = '#abdda4',
+              alpha = 0.4) +
+  facet_nested(factor(state, levels = c('U', 'dU'),
+                      labels = c(U = latex2exp::TeX(r'($\beta$)'),
+                                 dU = latex2exp::TeX(r'(d$\beta$)'))) ~  gender + label_dem,
+               scale = 'free',
+               labeller = labeller(.rows = label_parsed),
+               strip = strip_nested(
+                 text_x = elem_list_text(colour = c("black", "black")),
+                 background_x = elem_list_rect(fill = c("grey95", "white")),
+                 by_layer_x = TRUE)) +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  facetted_pos_scales(y = list(scale_y_continuous(n.breaks = 3), 
+                               scale_y_continuous(n.breaks = 3, limits = c(-0.5,0.5)))) +
+  scale_x_continuous(breaks = c(1940,1980,2020)) +
+  labs(linetype = NULL,y = NULL,x = NULL) +
+  theme(legend.position = "none",
+        strip.text.y.right = element_text(angle = 0),
+        text = element_text(size = 9),
+        plot.margin = margin(b = 0),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(linetype = 'dashed')) -> plot_female
+
+smoothing_tibble_adj %>%
+  left_join(age_classes, by = "weight") %>%
+  filter(weight %in% c('U0','U7','U11'),
+         gender == 'Male') %>%
+  mutate(label_dem = case_when(range == 'Newborn' ~ 'Infant (age 0)',
+                               range == '23~32' ~ 'Young (age 23 ~ 32)',
+                               range == '46~64' ~ 'Adult (age 46 ~ 64)')) %>%
+  mutate_at(vars(label_dem), . %>% factor(.,
+                                          levels = c('Infant (age 0)',
+                                                     'Young (age 23 ~ 32)',
+                                                     'Adult (age 46 ~ 64)'))) %>%
+  ggplot(aes(x = t, y = value)) + 
+  geom_segment(data = tibble(x = 1933,
+                             y = 0,
+                             xend = 2020,
+                             yend = 0,
+                             state = 'dU'),
+               aes(x = x, y = y, xend = xend, yend = yend),
+               # alpha = 0.5,
+               linetype = 'dashed') +
+  geom_line(color = "#abdda4",
+            alpha = 0.6,
+            size = 0.6) +
+  geom_ribbon(aes(ymin = value-2*value.sd, 
+                  ymax = value+2*value.sd),
+              fill = "#abdda4",  alpha = 0.4) +
+  facet_nested(factor(state, levels = c('U', 'dU'),
+                      labels = c(U = latex2exp::TeX(r'($\beta$)'),
+                                 dU = latex2exp::TeX(r'(d$\beta$)'))) ~  gender + label_dem,
+               scale = 'free',
+               labeller = labeller(.rows = label_parsed),
+               strip = strip_nested(
+                 text_x = elem_list_text(colour = c("black", "black")),
+                 background_x = elem_list_rect(fill = c("grey95", "white")),
+                 by_layer_x = TRUE)) +
+  force_panelsizes(rows = c(2, 1)) + 
+  facetted_pos_scales(y = list(scale_y_continuous(n.breaks = 3), 
+                               scale_y_continuous(n.breaks = 3, limits = c(-0.5,0.5)))) +
+  scale_x_continuous(breaks = c(1940,1980,2020)) +
+  labs(linetype = NULL,y = NULL,x = NULL) +
+  theme(legend.position = "none",
+        strip.text.y.right = element_text(angle = 0),
+        text = element_text(size = 9),
+        plot.margin = margin(t = 0),
+        axis.title.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(linetype = 'dashed')) -> plot_male
+
+
+plot_female / plot_male
+```
+
+# Male Mortality Forecast via Random Walk plus Drift
+
+As described in the paper, mortality forecasts are obtained via a **random walk with drift** model estimated over the smoothing means of the last 25 years. The code to fit and forecast $h$ step ahead is availble in `source/BSP_forecast.R` through the function `fitandforecast`. This function first call `bsp.fit` to fit the model, and then build the forecast via the random walk plus drift model. 
+
+Since we have already fit the model, we extract and use here only the part of `fitandforecast` that defines, fits, and forecasts the random walk plus drift model.
+
+For the sake of simplicity of the illustration in this notebook, we restrict the forecast step only to one of the two datasets (e.g. male mortality). Clearly, the procedure is general, and applicable to any dataset (also simply via `lapply` with the `fitandforecast` function).
+
+The random walk plus drift model is defined as (notation of the paper):
+$$
+\beta_{t_{s^*+1}} = \beta_{t_{s^*}} + \hat{\lambda}\delta_{s^*}\hat{\Delta} + \omega_{t_{s^*}} \qquad \omega_{t_{s^*}}\overset{\text{i.i.d.}}{\sim}N_p(0,W),
+$$
+with $W_{[j,l]}=\sigma^2_\omega\rho_{\beta_{[j,l]}}$.
+
+The following code computes $\hat{\Delta}$ as the median of the smoothing distribution of $\beta_{t}$ over the last 25 years, and estimates $\sigma^2_\omega$ via maximum likelihood on the mean of the smoothing distribution of $\beta_{t}$. The function `optim_rwd` in `source/BSP_forecast.R` provides the likelhood function of the random walk plus drift model.
+
+```{r rw_fit}
+source(here('source','BSP_forecast.R'))
+fit <- fit_list$ita_man
+smooth <- smooth_list$ita_man
+train <- length(years)
+n_for <- 25
+h <- 10
+# The following code is extracted and adapted from the fitandforecast() function
+K <- fit$info$K
+Z <- fit$info$Z
+## Fitting random-walk with drif for prediction
+# Extracting info on U and dU from BSP model
+U_m <- smooth$alphahat[, paste('U', 0:K, sep = '')][train - n_for + 1,]
+U <- smooth$alphahat[, paste('U', 0:K, sep = '')] %>% 
+  tail(n = n_for, k = 1) # selecting last n_for years
+dU <- apply(smooth$alphahat[, paste('dU', 0:K, sep = '')] %>%
+              tail(n = n_for, k = 1), # selecting last n_for years
+            MARGIN = 2, median)
+## Creating random walk + dirft model
+Tt_pred <- fit$fit$T[1,2,1] # lambda*delta
+kernel <- fit$info$kernel
+ages_max <- fit$info$ages_max
+# Estimation of rw + drift
+rep_pred <- 5
+starting_values <- log(runif(rep_pred, min = 1e-2, max = 2))
+fit_rw_list <- lapply(starting_values, 
+                      function(init){
+                        try(optim(par = init,
+                                  fn = optim_rwd,
+                                  method = "L-BFGS-B",
+                                  control = list(maxit = 1e6),
+                                  u = U, 
+                                  mu0 = U_m,
+                                  Tt = Tt_pred,
+                                  drift = dU,
+                                  kernel = fit$info$kernel,
+                                  ages_max = fit$info$ages_max,
+                                  K = K), TRUE)
+                      })
+# Checking failed optim
+fit_rw_list_clean <- discard(fit_rw_list, 
+                             . %>% inherits(., 'try-error'))
+if(length(fit_rw_list_clean) == 0){
+  print('All optimization attempts failed..')
+}
+# Extracting best fit
+best_fit_rw <- which.min(sapply(fit_rw_list_clean, . %>% `$`(.,value)))
+fit_rw <- fit_rw_list_clean[[best_fit_rw]]
+```
+
+Once the random walk with drift model is estimated, we can forecast $\beta_t$ for, e.g., the next 10 years. The forecast for the age-specific mortality rates can be then straightforwardly obtained by linear combination with the spline basis functions.
+```{r forecast}
+## Composing rw + drift with estimated sigma2_u
+sigma2_u <- exp(fit_rw$par)
+Qt_pred <- diag(K+1) * sigma2_u
+for(I in 1:(K+1-1)){
+  for(J in (I+1):(K+1)){
+    rho_u <- kernel(x = abs(ages_max[J]-ages_max[I]))
+    Qt_pred[I,J] <- Qt_pred[J,I] <- sigma2_u * rho_u
+  }
+}
+Zt_pred <- fit$fit$Z[, seq(1, 3*(K+1), by = 3), ]
+a1_pred <- tail(U, n = 1 ,k = 1) # last year of training
+P1_pred <- smooth$V %>%
+  tail(n = c(3*(K+1), 3*(K+1), 1)) %>% # selecting last year 
+  # extracting only var(u) components
+  `[`(seq(1, 3*(K+1), by = 3), seq(1, 3*(K+1), by = 3), ) 
+# Prediction h-step ahead
+U_pred <- matrix(NA, nrow = h, ncol = K+1)
+f_pred <- matrix(NA, nrow = h, ncol = Z)
+for(tt in 1:h){
+  if(tt == 1){
+    U_pred[1,] <- as.numeric(a1_pred) + Tt_pred%*%dU
+    f_pred[1,] <- Zt_pred%*%U_pred[1,]
+  } else {
+    U_pred[tt,] <- U_pred[tt-1,] + Tt_pred%*%dU
+    f_pred[tt,] <- Zt_pred%*%U_pred[tt,]
+  }
+}
+
+Upred <- list()
+for(kk in 1:(K+1)){
+  Upred <- c(Upred,
+            list(tibble(fit = U_pred[,kk])))
+}
+
+fpred <- list()
+for(zz in 1:Z){
+  fpred <- c(fpred,
+             list(tibble(fit = f_pred[,zz])))
+}
+```
+
+For the purpose of the illustration, we report here the obtained forecasts for the next 10 years of the spline weights $\hat{\beta}_{t^*j}$, for $j=1,\dots,20$.
+```{r beta_forecast}
+Upred %>% 
+  imap_dfr(.f = ~ (as_tibble(.) %>%
+             mutate(h_ahead = 1:h)),
+           .id = 'weight') %>%
+  mutate_at(vars(weight), as.numeric) %>%
+  mutate(t = tail(years,1) - 1 + h_ahead) -> forecast_beta
+
+forecast_beta %>%
+  mutate(label = paste('Beta', weight, sep = '')) %>%
+  select(label, fit, t) %>%
+  mutate_at(vars(fit), . %>% round(.,digits = 2)) %>%
+  pivot_wider(names_from = 'label', values_from = 'fit') %>%
+  reactable(columns = list(t = colDef(name = 'Year')))
+```
+Finally, we plot the forecasted age-specific mortality curves.
+```{r plot_forecast}
+fpred %>% 
+  imap_dfr(.f = ~ (as_tibble(.) %>%
+             mutate(h_ahead = 1:h)),
+           .id = 'age') %>%
+  mutate_at(vars(age), as.numeric) %>%
+  mutate(t = tail(years,1) - 1 + h_ahead) -> forecast_age
+
+forecast_age %>%
+  ggplot(aes(x = age, y = fit, color = factor(t))) +
+  geom_line() +
+  scale_color_brewer(palette = 'BrBG') +
+  scale_y_continuous(breaks = c(-1.5,-4.5,-7.5)) +
+  scale_x_continuous(n.breaks = 10) +
+  labs(x = "Age") +
+  guides(color = "none") +
+  theme(panel.grid = element_blank(),
+        axis.title.y = element_blank())
+```
+
+
+
+
+
+

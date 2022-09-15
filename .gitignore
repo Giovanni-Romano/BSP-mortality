@@ -1,0 +1,15 @@
+.Rproj.user
+.Rhistory
+.RData
+.Ruserdata
+.DS_Store
+.Rhistory
+*~
+*.Rdata
+*.RData
+!output/ITA_fit.Rdata
+/rdata/*
+out*
+/figures/*
+*.pdf
+*.html
