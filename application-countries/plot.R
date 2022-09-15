@@ -509,7 +509,6 @@ diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  # filter(state == 'U') %>%
   left_join(age_classes, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
@@ -580,7 +579,6 @@ diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  # filter(state == 'U') %>%
   left_join(age_classes, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
@@ -804,10 +802,28 @@ as_tibble(log((Y_us_man + Y_us_woman)/(N_us_man + N_us_woman))) %>%
   mutate_at(vars(age), as.numeric) -> data_us
 
 data_ita %>%
-  filter(year %in% c(1933,1943,1950,1960,1970,1980,1990,2000,2010,2019)) %>%
+  filter(year %in% c(1933,
+                     1943,
+                     1950,
+                     1960,
+                     1970,
+                     1980,
+                     1990,
+                     2000,
+                     2010,
+                     2019)) %>%
   mutate(title = 'Italy (1933-2019)') %>%
   bind_rows(data_us %>%
-              filter(year %in% c(1933,1943,1950,1960,1970,1980,1990,2000,2010,2020)) %>%
+              filter(year %in% c(1933,
+                                 1943,
+                                 1950,
+                                 1960,
+                                 1970,
+                                 1980,
+                                 1990,
+                                 2000,
+                                 2010,
+                                 2020)) %>%
               mutate(title = 'United States (1933-2020)')) %>%
   ggplot(aes(x = age, y = value, color = as.factor(year))) +
   geom_line() + 

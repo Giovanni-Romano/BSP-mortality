@@ -580,6 +580,18 @@ fpred %>%
 forecast_age %>%
   ggplot(aes(x = age, y = fit, color = factor(t))) +
   geom_line() +
+  geom_label_repel(data = . %>% 
+                     filter(t == 2020,
+                            age == 30),
+                   aes(x = age, y = fit, label = t),
+                   nudge_y = 0.9,
+                   nudge_x = 1) +
+  geom_label_repel(data = . %>% 
+                     filter(t == 2029,
+                            age == 15),
+                   aes(x = age, y = fit, label = t),
+                   nudge_y = -0.5,
+                   nudge_x = 15) +
   scale_color_brewer(palette = 'BrBG') +
   scale_y_continuous(breaks = c(-1.5,-4.5,-7.5)) +
   scale_x_continuous(n.breaks = 10) +
