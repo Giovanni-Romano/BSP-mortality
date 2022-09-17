@@ -1,5 +1,4 @@
 # Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients
-### Federico Pavone, Sirio Legramanti, and Daniele Durante
 
 This repository is associated with the article **Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients** and aims at providing detailed materials and codes to implement the general model presented in the article and to **fully reproduce the results presented in Sections 4**.
 
