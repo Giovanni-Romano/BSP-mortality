@@ -74,7 +74,7 @@ In particular,
   - `ITA_BSP.R`, `SWE_BSP.R`, `UK_BSP.R`, `US_BSP.R` implement and fit the model to respective data;
   - `smoothing.R` performs Kalman smoothing on the results of the previous fit;
   - `plot.R` creates the plots of the paper related to the multiple country analysis;
-  - `BSP_stepbystep.md` is a notebook showing and commenting the step-by-step model definition, fit, smoothing, and forecast. Once compailed it generates the html file `BSP_stepbystep.html`.
+  - `BSP_stepbystep.md` is a notebook showing and commenting the step-by-step model definition, fit, smoothing, and forecast. Once compiled it generates the html file `BSP_stepbystep.html`.
   - `model-comparison` contains the reproducible code to generate **Table 1** for the forecasting comparison with competing model. In particular,
     - `LC_for.R`, `APC_for.R`, `CBD_for.R`, `PLAT_for.R`, `RH_for.R`, `HU_for.R`, and `CP_for.R` (with subfolder `CP`) implements alternative models used in the comparison. Each script fit and forecast the respective model on all the datasets used (country-gender combination); The code in `CP` is taken from the material attached to the original paper "Smooth constrained mortality forecasting" by Camarda (2019).
     - `ITA_BSP_for.R`, `US_BSP_for.R`, `UK_BSP_for.R`, and `SWE_BSP_for.R` fit and forecasts the BSP model on the two datasets (one per gender) for each of the country;
