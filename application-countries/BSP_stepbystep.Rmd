@@ -1,7 +1,5 @@
 ---
 title: "Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients"
-author: "Federico Pavone, Sirio Legramanti, and Daniele Durante"
-date: "`r format(Sys.time(), '%d/%m/%Y')`"
 output:
   html_document:
     code_folding: show
