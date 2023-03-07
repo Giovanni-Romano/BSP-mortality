@@ -69,9 +69,9 @@ fitandforecast <- function(model,
                            maxcl = 30) {
   fit <- bsp.fit(model, 
                  rep = rep, 
-                 method = 'Nelder-Mead', 
+                 method = method, 
                  parallel = parallel, 
-                 maxcl = 30)
+                 maxcl = maxcl)
   K <- fit$info$K
   ## Fitting random-walk with drif for prediction
   # Smoothing distribution
@@ -173,6 +173,32 @@ fitandforecast <- function(model,
   return(pred)
 }
 
+fitandforecast_kalman <- function(model, 
+                                  h, 
+                                  Z, 
+                                  rep, 
+                                  method = 'Nelder-Mead', 
+                                  parallel = FALSE, 
+                                  maxcl = 30){
+  fit <- bsp.fit(model, 
+                 rep = rep, 
+                 method = method, 
+                 parallel = parallel, 
+                 maxcl = maxcl)
+  pred <- predict(fit$fit,
+                  interval = 'prediction',
+                  newdata = SSModel(matrix(NA, nrow = h, ncol = Z) ~ -1 +
+                                      SSMcustom(Z = fit$fit$Z, T = fit$fit$T,
+                                                R = fit$fit$R, Q = fit$fit$Q,
+                                                state_names = rownames(fit$fit$a1),
+                                                n = h), # total number of years, dimensionality check
+                                    distribution = 'gaussian',
+                                    H = diag(exp(fit$info$optim$par[4]), Z)),
+                  level = 0.95,
+                  type = 'response')
+  return(pred)
+}
+
 
 ###############################################
 ## Helper function to fit with increasing     #
@@ -207,7 +233,47 @@ rolling <- function(cg, n_for = 25){
                                                 n_for = n_for,
                                                 method = 'Nelder-Mead',
                                                 parallel = TRUE,
-                                                maxcl = 50))
+                                                maxcl = 30))
+  # Postprocessing of forecast list
+  forecast_list <- try(fitandfor_list %>%
+                         modify(. %>% imap_dfr(.f = ~ (as_tibble(.) %>%
+                                                         mutate(h_ahead = 1:h_step)),
+                                               .id = 'age')) %>%
+                         imap_dfr(.f = ~ ., .id='t') %>%
+                         mutate_at(vars(t), as.numeric) %>%
+                         mutate(country = country,
+                                gender = gender))
+  return(forecast_list)
+}
+
+rolling_kalman <- function(cg){
+  # Loading the data corrisponding to country cg
+  country <- sub("_.*", "", cg)
+  gender <- sub(".*_", "", cg)
+  print(paste('Doing', country, gender))
+  Y <- eval(parse(text = paste('Y', country, gender, sep = '_')))
+  N <- eval(parse(text = paste('N', country, gender, sep = '_')))
+  Tmax <- nrow(Y)
+  Z <- ncol(Y)
+  
+  # Creating increasing sample size datasets
+  data_list <- lapply(train:(Tmax - h_step),
+                      function(t){
+                        Y[1:t,]/N[1:t,]
+                      })
+  model_list <- lapply(data_list, . %>% bsp.model(.,
+                                                  delta = delta,
+                                                  age_knots = age_knots,
+                                                  kernel = matern_kernel))
+  # Fit and forecast
+  fitandfor_list <- lapply(model_list,
+                           . %>% fitandforecast_kalman(.,
+                                                       h = h_step,
+                                                       Z = Z,
+                                                       rep = rep,
+                                                       method = 'Nelder-Mead',
+                                                       parallel = TRUE,
+                                                       maxcl = 30))
   # Postprocessing of forecast list
   forecast_list <- try(fitandfor_list %>%
                          modify(. %>% imap_dfr(.f = ~ (as_tibble(.) %>%
