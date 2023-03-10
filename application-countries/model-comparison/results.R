@@ -157,6 +157,56 @@ for(country in c('UK', 'US', 'ITA', 'SWE')){
 }
 rm(list = 'res_forward')
 
+## New
+
+# NGP model results
+NGP_res_age <- tibble()
+for(country in c('UK', 'US', 'ITA', 'SWE')){
+  load(here('output', paste(country, '_NGP_for.Rdata', sep = '')))
+  print(names(res_forward))
+  for(country_gender in names(res_forward)){
+    NGP_res_age <- bind_rows(NGP_res_age,
+                             processBSP(item = res_forward[[country_gender]],
+                                        rates = data_list[[country_gender]]$rates,
+                                        country = country) %>%
+                               mutate(data = country_gender)) %>%
+      mutate(model = 'NGP')
+  }
+}
+rm(list = 'res_forward')
+
+# Kalman model results
+Kalman_res_age <- tibble()
+for(country in c('UK', 'US', 'ITA', 'SWE')){
+  load(here('output', paste(country, '_Kalman_for.Rdata', sep = '')))
+  print(names(res_forward))
+  for(country_gender in names(res_forward)){
+    Kalman_res_age <- bind_rows(Kalman_res_age,
+                                processBSP(item = res_forward[[country_gender]],
+                                           rates = data_list[[country_gender]]$rates,
+                                           country = country) %>%
+                                  mutate(data = country_gender)) %>%
+      mutate(model = 'Kalman')
+  }
+}
+rm(list = 'res_forward')
+
+# BSP_v2 model results
+BSP_v2_res_age <- tibble()
+for(country in c('UK', 'US', 'ITA', 'SWE')){
+  load(here('output', paste(country, '_v2_for.Rdata', sep = '')))
+  print(names(res_forward))
+  for(country_gender in names(res_forward)){
+    BSP_v2_res_age <- bind_rows(BSP_v2_res_age,
+                                processBSP(item = res_forward[[country_gender]],
+                                           rates = data_list[[country_gender]]$rates,
+                                           country = country) %>%
+                                  mutate(data = country_gender)) %>%
+      mutate(model = 'BSPv2')
+  }
+}
+rm(list = 'res_forward')
+
 
 
 # Results
@@ -249,9 +299,56 @@ print.xtable(xRes,
              append = TRUE,
              include.rownames = FALSE)
 
+#####################
+# NEW 
+#####################
+bind_rows(BSP_res_age,
+          BSP_v2_res_age,
+          NGP_res_age,
+          Kalman_res_age,
+          APC_res_age,
+          LC_res_age,
+          CBD_res_age,
+          PLAT_res_age,
+          RH_res_age,
+          HU_res_age,
+          CP_res_age) %>%
+  filter(time_fit >= 1990,
+         time_fit <= 2010,
+         time_pred <= 2020,
+         (data == 'uk_man') | (data == 'uk_woman') |
+           (data == 'us_man') | (data == 'us_woman') |
+           (data == 'ita_man' & time_fit <= 2009 & time_pred <= 2019) | 
+           (data == 'ita_woman' & time_fit <= 2009 & time_pred <= 2019) |
+           (data == 'swe_man') | (data == 'swe_woman')) %>%
+  select(time_fit, age, h_ahead, model,
+         data, time_pred, rmse,
+         rmse_log, mad, mad_log) %>%
+  group_by(model, h_ahead, age) %>%
+  summarise(mean_abserr_log = mean(mad_log),
+            median_abserr_log = median(mad_log),
+            q25_abserr_log = quantile(mad_log,  probs = 0.25),
+            q75_abserr_log = quantile(mad_log,  probs = 0.75),
+            mean_rmse_log = mean(rmse_log),
+            median_rmse_log = median(rmse_log),
+            q25_rmse_log = quantile(rmse_log,  probs = 0.25),
+            q75_rmse_log = quantile(rmse_log,  probs = 0.75),) %>%
+  ungroup() -> results_tot
 
 
+results_tot %>%
+  select(sd_rmse_log, model, h_ahead, age) %>%
+  pivot_wider(names_from = model, values_from = sd_rmse_log) %>%
+  filter(h_ahead == 10) %>%
+  select(-h_ahead)
 
-
+results_tot %>%
+  filter(model %in% c("BSP","NGP")) %>%
+  ggplot(aes(x = age, y = median_abserr_log, color = model, fill = model)) +
+  geom_line() +
+  geom_ribbon(aes(ymin = q25_abserr_log, 
+                  ymax = q75_abserr_log),
+              alpha = 0.5) +
+  facet_wrap(vars(h_ahead))
 
 
