@@ -27,6 +27,8 @@ load(here('output','mortality.Rdata'))
 source(here('source','BSP.R'))
 source(here('source','setup.R'))
 
+delta <- 1
+
 output_collector <- append(output_collector, list(delta = delta,
                                                   rep = rep,
                                                   lik = 'gaussian',
@@ -48,10 +50,5 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','UK_NGP_for.Rdata'))
-
-
-
-
-
+     file = here('output',paste('UK_NGP_delta', delta, '_for.Rdata', sep = '')))
 
