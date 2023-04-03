@@ -363,9 +363,22 @@ for(it in seq_along(data_list)){
 output_collector <- append(output_collector, 
                            list(warnings = warnings()))
 
-save(list = c('output_collector',
-              'times',
-              'data_list'),
-     file = here('output','comp_times.Rdata'))
+# save(list = c('output_collector',
+#               'times',
+#               'data_list'),
+#      file = here('output','comp_times.Rdata'))
+
+times %>%
+  map_dfr(.f = . %>%
+            select(-expression) %>%
+            relocate(label, .before = min) %>%
+            select(label, median, `itr/sec`, n)) -> res
+
+res %>%
+  mutate(model = str_extract(label, pattern = "[A-Z]+"),
+         what = str_extract(label, pattern = "[a-z]+$")) %>%
+  ggplot(aes(x = n, y = median, color = model)) +
+  geom_line() +
+  facet_grid(row = vars(what))
 
 
