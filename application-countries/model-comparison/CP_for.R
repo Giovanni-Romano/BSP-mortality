@@ -1,5 +1,7 @@
 require(here)
-require(tidyverse)
+require(magrittr)
+require(purrr)
+require(dplyr)
 require(MortalitySmooth) 
 require(doParallel)
 
@@ -81,10 +83,75 @@ fit_sim <- function(t, train, Y0, E0, years0, nsim = 10){
   ## estimated and forecast linear predictor, log-mortality
   ETA.hatC <- FITcon$ETA
   
+  ## Bootstrap
+  res <- FITinf$res
+  whi0 <- which(is.na(res))
+  res1 <- c(res)[-whi0]
+  res[whi0] <- sample(res1, size=length(whi0))
+  Y11 <- Y1
+  Y11[whi0] <- 1e-6
+  Y1s <- array(0, dim=c(m,n1,nsim))
+  ## function to invert the bootstrap-deaths
+  InvDev <- function(X, Z, C){X - Z * log(X) - C}
+  ## resample deaths
+  for(k in 1:nsim){
+    ## resample (with replacement) the residuals
+    resS <- matrix(sample(x=res, size=m*n1, replace = TRUE), m, n1)  
+    ## computing C =  res^2/2 + Dth - Dth*ln(Dth)
+    C <- 1/2*(resS^2) + Y11 - Y11*log(Y11)
+    ## recomputing the deaths
+    LOW <- Y11
+    LOW[which(resS>0)] <- 0
+    UP <- Y11
+    UP[which(resS<0)] <- 1e8
+    UP <- ifelse(LOW>=UP, UP+10^-8, UP)
+    Y1s.i <- matrix(NA,m,n1)
+    for(i in 1:m){
+      for(j in 1:n1){
+        Y1s.i[i,j]  <- uniroot(InvDev, lower=LOW[i,j], upper=UP[i,j],
+                               tol = 0.00001, Z=Y11[i,j], C=C[i,j])$root
+      }
+    }
+    Y1s[,,k] <- Y1s.i
+    cat(k, "\n")
+  }
+  ## fit each sampled/bootstrap matrix of death counts
+  ## and from the derivatives, compute associated confidence intervals
+  DELTAs <- list()
+  for(k in 1:nsim){
+    Y1.k <- Y1s[,,k]
+    FITinf.k <- PSinfant(Y=Y1.k, E=E1, lambdas=OPTinf$par, WEI=WEI1)
+    deltas.k <- deltasFUN(FITinf.k)
+    DELTAs[[k]] <- deltas.k
+    cat(k, "\n")
+  }
+  ## fit and forecast each sampled/boostrap matrix of death counts
+  ## with CP-splines
+  ETA.hatCs <- array(0, dim=c(m, n, nsim))
+  for(k in 1:nsim){
+    Y.k <- Y
+    Y.k[,1:n1] <- Y1s[,,k]
+    FITcon.k <- CPSfunction(Y=Y.k, E=E, lambdas=OPTinf$par,
+                            WEI=WEI, deltas=DELTAs[[k]], S=S,
+                            st.alphas=FITcon$ALPHAS)
+    ETA.hatCs[,,k] <- FITcon.k$ETA
+    cat(k, FITcon.k$it, FITcon.k$dalphas, "\n")
+  }
+  ##
+  
+  ETA.hatCs_for <- tail(x = ETA.hatCs, n = c(m,h_step,nsim))
+  ETA.hatC_U95 <- apply(ETA.hatCs_for, MARGIN = c(1,2), function(x){quantile(x, 0.975)})
+  colnames(ETA.hatC_U95) <- years0[(t+1):(t+h_step)]
+  ETA.hatC_L95 <- apply(ETA.hatCs_for, MARGIN = c(1,2), function(x){quantile(x, 0.025)})
+  colnames(ETA.hatC_L95) <- years0[(t+1):(t+h_step)]
+  
   rates_pred <- tail(x = ETA.hatC, n = c(m,h_step))
   colnames(rates_pred) <- years0[(t+1):(t+h_step)]
   
-  return(rates_pred)
+  # return(rates_pred)
+  return(list(pred = rates_pred,
+              U95 = ETA.hatC_U95,
+              L95 = ETA.hatC_L95))
 }
 
 # Function to set up the rolling window: minimum window given by train, then 
@@ -126,6 +193,6 @@ output_collector <- append(output_collector, list(warnings = warnings()))
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','CP_for.Rdata'))
+     file = here('output','CP_boot_for.Rdata'))
 
 
