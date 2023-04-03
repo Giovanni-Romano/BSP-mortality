@@ -16,4 +16,4 @@ delta <- 0.01
 age_knots <- c(seq(from=5, to=40, by=5), 50, 60, seq(from=70, to=95, by=5))
 
 # How many times to repeat MLE estimation
-rep <- 100
+rep <- 5

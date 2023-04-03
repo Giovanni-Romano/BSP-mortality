@@ -213,6 +213,30 @@ processStMoMo <- function(item,
     pivot_longer(-time_pred, names_to = 'age', values_to = 'rate.obs') %>%
     mutate_at(vars(age), as.numeric)
   
+  item_U95_age <- item %>%
+    modify(. %>% apply(., MARGIN = c(1,2), function(x){quantile(x, 0.975)}) %>%
+             as_tibble() %>%
+             mutate(age=ages) %>%
+             pivot_longer(-age, names_to='time_pred', values_to='U95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>% 
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>%   
+    mutate(h_ahead = time_pred - time_fit) %>%
+    inner_join(data_obs %>% filter(time_pred > years[1]+train-1), by = c('age', 'time_pred')) %>%
+    mutate(model = model)
+  
+  item_L95_age <- item %>%
+    modify(. %>% apply(., MARGIN = c(1,2), function(x){quantile(x, 0.025)}) %>%
+             as_tibble() %>%
+             mutate(age=ages) %>%
+             pivot_longer(-age, names_to='time_pred', values_to='L95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>% 
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>%   
+    mutate(h_ahead = time_pred - time_fit) %>%
+    inner_join(data_obs %>% filter(time_pred > years[1]+train-1), by = c('age', 'time_pred')) %>%
+    mutate(model = model)
+  
   item_point_age <- item %>%
     modify(. %>% apply(., MARGIN = c(1,2), mean) %>%
              as_tibble() %>%
@@ -230,7 +254,14 @@ processStMoMo <- function(item,
            mad_log = abs(log(fit) - log(rate.obs))) %>%
     mutate(model = model)
   
-  return(item_point_age)
+  res <- item_point_age %>%
+    inner_join(item_U95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    inner_join(item_L95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    mutate(width95_log = log(U95) - log(L95),
+           inside = ifelse(rate.obs < U95 & rate.obs > L95, 1, 0))
+  
+  # return(item_point_age)
+  return(res)
 }
 
 ######################################
@@ -255,6 +286,34 @@ processHU <- function(item,
     pivot_longer(-time_pred, names_to = 'age', values_to = 'rate.obs') %>%
     mutate_at(vars(age), as.numeric)
   
+  HU_U95_age <- item %>%
+    modify(. %>% 
+             pluck('conf.intervals') %>%
+             pluck('U95') %>%
+             as_tibble() %>%
+             mutate(age = ages) %>%
+             pivot_longer(-age, names_to = 'time_pred', values_to = 'U95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>%
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>% 
+    inner_join(data_obs, by = c('age', 'time_pred')) %>%
+    mutate(h_ahead = time_pred - time_fit) %>%
+    mutate(model = 'HU')
+  
+  HU_L95_age <- item %>%
+    modify(. %>% 
+             pluck('conf.intervals') %>%
+             pluck('L95') %>%
+             as_tibble() %>%
+             mutate(age = ages) %>%
+             pivot_longer(-age, names_to = 'time_pred', values_to = 'L95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>%
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>% 
+    inner_join(data_obs, by = c('age', 'time_pred')) %>%
+    mutate(h_ahead = time_pred - time_fit) %>%
+    mutate(model = 'HU')
+  
   HU_point_age <- item %>%
     modify(. %>% 
              pluck('predicted.values') %>%
@@ -273,7 +332,14 @@ processHU <- function(item,
            mad_log = abs(log(fit) - log(rate.obs))) %>%
     mutate(model = 'HU')
   
-  return(HU_point_age)
+  res <- HU_point_age %>%
+    inner_join(HU_U95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    inner_join(HU_L95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    mutate(width95_log = log(U95) - log(L95),
+           inside = ifelse(rate.obs < U95 & rate.obs > L95, 1, 0))
+  
+  # return(HU_point_age)
+  return(res)
 }
 
 
@@ -299,8 +365,37 @@ processCP <- function(item,
     pivot_longer(-time_pred, names_to = 'age', values_to = 'rate.obs') %>%
     mutate_at(vars(age), as.numeric)
   
+  CP_U95_age <- item %>%
+    modify(. %>% 
+             pluck("U95") %>%
+             as_tibble(.name_repair = 'unique') %>%
+             mutate(age = ages) %>%
+             pivot_longer(-age, names_to = 'time_pred', values_to = 'U95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>%
+    drop_na(time_pred) %>%
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>%
+    inner_join(data_obs, by = c('age', 'time_pred')) %>%
+    mutate(h_ahead = time_pred - time_fit) %>%
+    mutate(model = 'CP')
+  
+  CP_L95_age <- item %>%
+    modify(. %>% 
+             pluck("L95") %>%
+             as_tibble(.name_repair = 'unique') %>%
+             mutate(age = ages) %>%
+             pivot_longer(-age, names_to = 'time_pred', values_to = 'L95') %>%
+             mutate_at(vars(time_pred), as.numeric)) %>%
+    map_dfr(.f = ~., .id='time_fit') %>%
+    drop_na(time_pred) %>%
+    mutate_at(vars(time_fit), . %>% as.numeric(.) %>% `+`(., years[1]+train-2)) %>%
+    inner_join(data_obs, by = c('age', 'time_pred')) %>%
+    mutate(h_ahead = time_pred - time_fit) %>%
+    mutate(model = 'CP')
+  
   CP_point_age <- item %>%
     modify(. %>% 
+             pluck("pred") %>%
              as_tibble(.name_repair = 'unique') %>%
              mutate(age = ages) %>%
              pivot_longer(-age, names_to = 'time_pred', values_to = 'fit') %>%
@@ -318,7 +413,14 @@ processCP <- function(item,
            mad_log = abs(log(fit) - log(rate.obs))) %>%
     mutate(model = 'CP')
   
-  return(CP_point_age)
+  res <- CP_point_age %>%
+    inner_join(CP_U95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    inner_join(CP_L95_age, by = c("time_fit", "age", "time_pred", "h_ahead", "rate.obs", "model")) %>%
+    mutate(width95_log = U95 - L95,
+           inside = ifelse(rate.obs < exp(U95) & rate.obs > exp(L95), 1, 0))
+  
+  # return(CP_point_age)
+  return(res)
 }
 
 
@@ -355,7 +457,11 @@ processBSP <- function(item,
     mutate(rmse = (fit-rate.obs)^2,
            mad = abs(fit-rate.obs),
            rmse_log = (log(fit)-log(rate.obs))^2,
-           mad_log = abs(log(fit) - log(rate.obs))) %>%
+           mad_log = abs(log(fit) - log(rate.obs)),
+           width95_log = upr - lwr,
+           inside = ifelse(log(rate.obs) < upr & log(rate.obs) > lwr, 1, 0)) %>%
+    rename(U95 = upr,
+           L95 = lwr) %>%
     mutate(model = 'BSP')
   
   return(bsp_point_age)
