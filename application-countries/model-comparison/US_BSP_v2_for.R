@@ -43,7 +43,7 @@ cg <- c('us_man',
         'us_woman')
 
 res_forward <- lapply(cg, 
-                      . %>% rolling_v3(., 
+                      . %>% rolling_uq(., 
                                        n_for = n_for))
 names(res_forward) <- cg
 
@@ -53,4 +53,4 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','US_v3_for.Rdata'))
+     file = here('output','US_uq3_for.Rdata'))
