@@ -7,6 +7,7 @@ theme_set(theme_light() + theme(panel.grid.major = element_blank(),
                                 strip.text.x = element_text(color='#525252'),
                                 strip.text.y = element_text(color='#525252')))
 require(xtable)
+dem.env <- getNamespace("demography") # requires package "demography"
 
 rm(list = ls())
 
@@ -155,21 +156,21 @@ for(country_gender in names(res_forward)){
 rm(list = 'res_forward')
 
 
-# BSP model results
-BSP_res_age <- tibble()
-for(country in c('UK', 'US', 'ITA', 'SWE')){
-  load(here('output', paste(country, '_for.Rdata', sep = '')))
-  print(names(res_forward))
-  for(country_gender in names(res_forward)){
-    BSP_res_age <- bind_rows(BSP_res_age,
-                             processBSP(item = res_forward[[country_gender]],
-                                        rates = data_list[[country_gender]]$rates,
-                                        country = country) %>%
-                               mutate(data = country_gender)) %>%
-      mutate(model = 'BSP')
-  }
-}
-rm(list = 'res_forward')
+# # BSP model results
+# BSP_res_age <- tibble()
+# for(country in c('UK', 'US', 'ITA', 'SWE')){
+#   load(here('output', paste(country, '_for.Rdata', sep = '')))
+#   print(names(res_forward))
+#   for(country_gender in names(res_forward)){
+#     BSP_res_age <- bind_rows(BSP_res_age,
+#                              processBSP(item = res_forward[[country_gender]],
+#                                         rates = data_list[[country_gender]]$rates,
+#                                         country = country) %>%
+#                                mutate(data = country_gender)) %>%
+#       mutate(model = 'BSP')
+#   }
+# }
+# rm(list = 'res_forward')
 
 ## New
 
@@ -206,24 +207,24 @@ for(country in c('UK', 'US', 'ITA', 'SWE')){
 rm(list = 'res_forward')
 
 # BSP_v2 model results
-BSP_v2_res_age <- tibble()
-for(country in c('UK', 'US', 'ITA', 'SWE')){
-  load(here('output', paste(country, '_v2_for.Rdata', sep = '')))
-  print(names(res_forward))
-  for(country_gender in names(res_forward)){
-    BSP_v2_res_age <- bind_rows(BSP_v2_res_age,
-                                processBSP(item = res_forward[[country_gender]],
-                                           rates = data_list[[country_gender]]$rates,
-                                           country = country) %>%
-                                  mutate(data = country_gender)) %>%
-      mutate(model = 'BSP_v2')
-  }
-}
-rm(list = 'res_forward')
+# BSP_v2_res_age <- tibble()
+# for(country in c('UK', 'US', 'ITA', 'SWE')){
+#   load(here('output', paste(country, '_v2_for.Rdata', sep = '')))
+#   print(names(res_forward))
+#   for(country_gender in names(res_forward)){
+#     BSP_v2_res_age <- bind_rows(BSP_v2_res_age,
+#                                 processBSP(item = res_forward[[country_gender]],
+#                                            rates = data_list[[country_gender]]$rates,
+#                                            country = country) %>%
+#                                   mutate(data = country_gender)) %>%
+#       mutate(model = 'BSP_v2')
+#   }
+# }
+# rm(list = 'res_forward')
 
 BSP_uq_res_age <- tibble()
 for(country in c('UK', 'US', 'ITA', 'SWE')){
-  load(here('output', paste(country, '_uq3_for.Rdata', sep = '')))
+  load(here('output', paste(country, '_uq_for.Rdata', sep = '')))
   print(names(res_forward))
   for(country_gender in names(res_forward)){
     BSP_uq_res_age <- bind_rows(BSP_uq_res_age,
@@ -251,12 +252,14 @@ rm(list = 'res_forward')
 # 
 # load(here('output','results_for.Rdata'))
 
-save(list = c("BSP_v3_res_age",
+save(list = c("BSP_uq_res_age",
               "APC_res_age",
               "LC_res_age",
               "CBD_res_age",
               "PLAT_res_age",
               "RH_res_age",
+              "NGP_res_age",
+              "Kalman_res_age",
               "HU_res_age",
               "CP_res_age"),
      file = here('output','results_uq_for.Rdata'))
@@ -344,8 +347,6 @@ print.xtable(xRes,
 # NEW 
 #####################
 bind_rows(BSP_uq_res_age,
-          # BSP_v3_res_age,
-          # BSP_v2_res_age,
           NGP_res_age,
           Kalman_res_age,
           APC_res_age,
@@ -510,7 +511,7 @@ xRes <- res_log %>%
   relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'RMSE of the mortality log-rate.')
+         caption = 'Root mean squared error of the mortality log-rate.')
 
 print.xtable(xRes,
              file = here('output','table_rmse.tex'),
@@ -518,7 +519,6 @@ print.xtable(xRes,
 
 
 ## Coverage 95
-
 res_log <- results_tot %>%
   select(coverage, model, h_ahead) %>%
   pivot_wider(names_from = "model", values_from = 'coverage')
@@ -539,7 +539,7 @@ xRes <- res_log %>%
   relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'Coverage of 95% prediction interval')
+         caption = 'Coverage of 95\\% prediction interval')
 
 print.xtable(xRes,
              file = here('output','table_uq.tex'),
@@ -566,11 +566,325 @@ xRes <- res_log %>%
   relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'Average width of 95% prediction interval')
+         caption = 'Average width of 95\\% prediction interval')
 
 print.xtable(xRes,
              file = here('output','table_width.tex'),
              include.rownames = FALSE)
 
+# Life expectancy
+compute_lifexp <- function(mx){
+  dem.env$lt(mx,0,agegroup = 1,sex = 'woman')$ex
+}
 
+bind_rows(BSP_uq_res_age,
+          NGP_res_age,
+          Kalman_res_age,
+          APC_res_age,
+          LC_res_age,
+          CBD_res_age,
+          PLAT_res_age,
+          RH_res_age,
+          HU_res_age,
+          CP_res_age) %>%
+  filter(time_fit >= 1990,
+         time_fit <= 2010,
+         time_pred <= 2020,
+         (data == 'uk_man') | (data == 'uk_woman') |
+           (data == 'us_man') | (data == 'us_woman') |
+           (data == 'ita_man' & time_fit <= 2009 & time_pred <= 2019) | 
+           (data == 'ita_woman' & time_fit <= 2009 & time_pred <= 2019) |
+           (data == 'swe_man') | (data == 'swe_woman')) %>%
+  select(time_fit, age, h_ahead, model,
+         data, time_pred, fit, rate.obs) %>%
+  group_by(data, model, h_ahead, time_fit) %>%
+  arrange(age) %>%
+  mutate(exp.fit = compute_lifexp(fit),
+         exp.obs = compute_lifexp(rate.obs)) %>%
+  ungroup() %>%
+  filter(age == 0) %>%
+  group_by(model, h_ahead) %>%
+  summarise(exp.median_abserr = median(abs(exp.fit - exp.obs)),
+            exp.q75_abserr = quantile(abs(exp.fit - exp.obs), probs = 0.75),
+            exp.q25_abserr = quantile(abs(exp.fit - exp.obs), probs = 0.25),
+            exp.rmse = sqrt(mean((exp.fit - exp.obs)^2))) %>%
+  ungroup() -> res_exp_age0
+
+# RMSE for life exp at age 0
+res_exp_rmse <- res_exp_age0 %>%
+  select(exp.rmse, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'exp.rmse')
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_exp_rmse %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  relocate(Kalman, .before = PLAT) %>%
+  relocate(NGP, .before = PLAT) %>%
+  select(-c(Kalman,NGP)) %>%
+  xtable(x = ., 
+         digits = 2,
+         caption = 'Root mean squared error for the life expectancy at birth.')
+
+print.xtable(xRes,
+             file = here('output','table_rmse_exp0.tex'),
+             include.rownames = FALSE)
+
+# MAD for life exp at age 0
+res_mad_exp0 <- res_exp_age0 %>%
+  select(exp.median_abserr, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'exp.median_abserr')
+
+res_quantiles_exp0 <- res_exp_age0 %>%
+  filter(model %in% c("BSP", "CP", "HU")) %>%
+  select(exp.q25_abserr, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'exp.q25_abserr') %>%
+  left_join(res_exp_age0 %>%
+              filter(model %in% c("BSP", "CP", "HU")) %>%
+              select(exp.q75_abserr, model, h_ahead) %>%
+              pivot_wider(names_from = "model", values_from = 'exp.q75_abserr'),
+            by = c("h_ahead" = "h_ahead"),
+            suffix = c(".25",".75"))
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_mad_exp0 %>%
+  left_join(res_quantiles_exp0,
+            by = c("h_ahead" = "h_ahead")) %>%
+  mutate_at(vars(BSP), ~ paste(round(., digits = 2), " [", 
+                               round(BSP.25, digits = 2), ",", 
+                               round(BSP.75, digits = 2), 
+                               "]", sep = "")) %>%
+  mutate_at(vars(CP), ~ paste(round(., digits = 2), " [", 
+                              round(CP.25, digits = 2), ",", 
+                              round(CP.75, digits = 2), 
+                              "]", sep = "")) %>%
+  mutate_at(vars(HU), ~ paste(round(., digits = 2), " [", 
+                              round(HU.25, digits = 2), ",", 
+                              round(HU.75, digits = 2), 
+                              "]", sep = "")) %>%
+  select(-c("BSP.25", "BSP.75",
+            "CP.25", "CP.75",
+            "HU.25", "HU.75")) %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  relocate(Kalman, .before = PLAT) %>%
+  relocate(NGP, .before = PLAT) %>%
+  select(-c(Kalman,NGP)) %>%
+  xtable(x = ., 
+         digits = 2,
+         caption = 'Median absolute deviation of the life expectancy at birth.')
+
+print.xtable(xRes,
+             file = here('output','table_median_exp0.tex'),
+             include.rownames = FALSE)
+
+
+### ITA US UK SWE FRA DNK CZE
+load(here('output','results_uq_for.Rdata'))
+bind_rows(BSP_uq_res_age,
+          APC_res_age,
+          LC_res_age,
+          CBD_res_age,
+          PLAT_res_age,
+          RH_res_age,
+          HU_res_age,
+          CP_res_age) %>%
+  filter(time_fit >= 1990,
+         time_fit <= 2010,
+         time_pred <= 2020,
+         (data == 'uk_man') | (data == 'uk_woman') |
+           (data == 'us_man') | (data == 'us_woman') |
+           (data == 'ita_man' & time_fit <= 2009 & time_pred <= 2019) | 
+           (data == 'ita_woman' & time_fit <= 2009 & time_pred <= 2019) |
+           (data == 'swe_man') | (data == 'swe_woman')) %>%
+  select(time_fit, age, h_ahead, model,
+         data, time_pred, rmse,
+         rmse_log, mad, mad_log,
+         width95_log, inside) -> res_base
+
+load(here('output','results_uq_for_extra.Rdata'))
+bind_rows(BSP_uq_res_age,
+          APC_res_age,
+          LC_res_age,
+          CBD_res_age,
+          PLAT_res_age,
+          RH_res_age,
+          CP_res_age,
+          HU_res_age) %>%
+  filter(time_pred <= 2020) %>%
+  select(time_fit, age, h_ahead, model,
+         data, time_pred, rmse,
+         rmse_log, mad, mad_log,
+         width95_log, inside) -> res_extra
+
+res_base %>%
+  bind_rows(res_extra) %>%
+  group_by(model, h_ahead) %>%
+  summarise(mean_abserr_log = mean(mad_log),
+            median_abserr_log = median(mad_log),
+            q25_abserr_log = quantile(mad_log,  probs = 0.25),
+            q75_abserr_log = quantile(mad_log,  probs = 0.75),
+            mean_rmse_log = mean(rmse_log),
+            median_rmse_log = median(rmse_log),
+            q25_rmse_log = quantile(rmse_log,  probs = 0.25),
+            q75_rmse_log = quantile(rmse_log,  probs = 0.75),
+            mean_width95_log = mean(width95_log),
+            median_width95_log = median(width95_log),
+            q25_width95_log = quantile(width95_log,  probs = 0.25),
+            q75_width95_log = quantile(width95_log,  probs = 0.75),
+            coverage = mean(inside)) %>%
+  ungroup() -> results_all
+
+#### Overall on log scale ####
+res_log <- results_all %>%
+  select(median_abserr_log, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'median_abserr_log')
+
+res_quantiles_log <- results_all %>%
+  filter(model %in% c("BSP", "CP", "HU")) %>%
+  select(q25_abserr_log, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'q25_abserr_log') %>%
+  left_join(results_all %>%
+              filter(model %in% c("BSP", "CP", "HU")) %>%
+              select(q75_abserr_log, model, h_ahead) %>%
+              pivot_wider(names_from = "model", values_from = 'q75_abserr_log'),
+            by = c("h_ahead" = "h_ahead"),
+            suffix = c(".25",".75"))
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_log %>%
+  left_join(res_quantiles_log,
+            by = c("h_ahead" = "h_ahead")) %>%
+  mutate_at(vars(BSP), ~ paste(round(., digits = 3), " [", 
+                               round(BSP.25, digits = 2), ",", 
+                               round(BSP.75, digits = 2), 
+                               "]", sep = "")) %>%
+  mutate_at(vars(CP), ~ paste(round(., digits = 3), " [", 
+                              round(CP.25, digits = 2), ",", 
+                              round(CP.75, digits = 2), 
+                              "]", sep = "")) %>%
+  mutate_at(vars(HU), ~ paste(round(., digits = 3), " [", 
+                              round(HU.25, digits = 2), ",", 
+                              round(HU.75, digits = 2), 
+                              "]", sep = "")) %>%
+  select(-c("BSP.25", "BSP.75",
+            "CP.25", "CP.75",
+            "HU.25", "HU.75")) %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  # relocate(Kalman, .before = PLAT) %>%
+  # relocate(NGP, .before = PLAT) %>%
+  xtable(x = ., 
+         digits = 3,
+         caption = 'ALL: Median absolute deviation of the mortality log-rate.')
+
+print.xtable(xRes,
+             file = here('output','table_median_all.tex'),
+             include.rownames = FALSE)
+
+## RMSE
+res_log <- results_all %>%
+  select(mean_rmse_log, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'mean_rmse_log')
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_log %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  # relocate(Kalman, .before = PLAT) %>%
+  # relocate(NGP, .before = PLAT) %>%
+  xtable(x = ., 
+         digits = 3,
+         caption = 'ALL: RMSE of the mortality log-rate.')
+
+print.xtable(xRes,
+             file = here('output','table_rmse_all.tex'),
+             include.rownames = FALSE)
+
+
+## Coverage 95
+res_log <- results_all %>%
+  select(coverage, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'coverage')
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_log %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  # relocate(Kalman, .before = PLAT) %>%
+  # relocate(NGP, .before = PLAT) %>%
+  xtable(x = ., 
+         digits = 3,
+         caption = 'ALL: Coverage of 95% prediction interval')
+
+print.xtable(xRes,
+             file = here('output','table_uq_all.tex'),
+             include.rownames = FALSE)
+
+## Width 95
+res_log <- results_all %>%
+  select(mean_width95_log, model, h_ahead) %>%
+  pivot_wider(names_from = "model", values_from = 'mean_width95_log')
+
+options(xtable.floating = TRUE)
+options(xtable.timestamp = "")
+
+xRes <- res_log %>%
+  mutate_at(vars(h_ahead), as.integer) %>%
+  rename(`Steps ahead` = h_ahead) %>%
+  relocate(BSP, .before = APC) %>%
+  relocate(CP, .before = APC) %>%
+  relocate(HU, .before = APC) %>%
+  relocate(PLAT, .before = APC) %>%
+  relocate(RH, .before = APC) %>%
+  relocate(LC, .before = CBD) %>%
+  # relocate(Kalman, .before = PLAT) %>%
+  # relocate(NGP, .before = PLAT) %>%
+  xtable(x = ., 
+         digits = 3,
+         caption = 'ALL: Average width of 95% prediction interval')
+
+print.xtable(xRes,
+             file = here('output','table_width_all.tex'),
+             include.rownames = FALSE)
 

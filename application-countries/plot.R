@@ -338,21 +338,21 @@ smoothing_tibble_adj %>%
             size = 0.6) +
   geom_ribbon(aes(ymin = value-2*value.sd, ymax = value+2*value.sd,
                   fill = country),  alpha = 0.4) +
-  ggflags::geom_flag(data = tibble(x = c(rep(1943,4),
-                                         rep(2006,4),
-                                         rep(1943,4)),
-                                   gender = 'Female',
-                                   label_dem = factor(c(rep('Infant (age 0)',4),
-                                                        rep('Young (age 23 ~ 32)',4),
-                                                        rep('Adult (age 46 ~ 64)',4)),
-                                                      levels = c('Infant (age 0)',
-                                                                 'Young (age 23 ~ 32)',
-                                                                 'Adult (age 46 ~ 64)')),
-                                   state = 'U',
-                                   y = c(-5.2,-5.6,-6,-6.4,
-                                         -2.3,-2.7,-3.1,-3.5,
-                                         -5.2,-5.6,-6,-6.4),
-                                   country = rep(c('it','us','gb','se'),3)),
+  geom_flag(data = tibble(x = c(rep(1943,4),
+                                rep(2006,4),
+                                rep(1943,4)),
+                          gender = 'Female',
+                          label_dem = factor(c(rep('Infant (age 0)',4),
+                                               rep('Young (age 23 ~ 32)',4),
+                                               rep('Adult (age 46 ~ 64)',4)),
+                                             levels = c('Infant (age 0)',
+                                                        'Young (age 23 ~ 32)',
+                                                        'Adult (age 46 ~ 64)')),
+                          state = 'U',
+                          y = c(-5.2,-5.6,-6,-6.4,
+                                -2.3,-2.7,-3.1,-3.5,
+                                -5.2,-5.6,-6,-6.4),
+                          country = rep(c('it','us','gb','se'),3)),
                      aes(x = x, y = y, country = country), size = 2.5) +
   geom_segment(data = tibble(x = c(rep(1948,4),
                                    rep(2011,4),
@@ -431,22 +431,22 @@ smoothing_tibble_adj %>%
             size = 0.6) +
   geom_ribbon(aes(ymin = value-2*value.sd, ymax = value+2*value.sd,
                   fill = country),  alpha = 0.4) +
-  ggflags::geom_flag(data = tibble(x = c(rep(1943,4),
-                                         rep(2006,4),
-                                         rep(1943,4)),
-                                   gender = 'Male',
-                                   label_dem = factor(c(rep('Infant (age 0)',4),
-                                                        rep('Young (age 23 ~ 32)',4),
-                                                        rep('Adult (age 46 ~ 64)',4)),
-                                                      levels = c('Infant (age 0)',
-                                                                 'Young (age 23 ~ 32)',
-                                                                 'Adult (age 46 ~ 64)')),
-                                   state = 'U',
-                                   y = c(-4.9,-5.3,-5.7,-6.1,
-                                         -2.1,-2.5,-2.9,-3.3,
-                                         -4.9,-5.3,-5.7,-6.1),
-                                   country = rep(c('it','us','gb','se'),3)),
-                     aes(x = x, y = y, country = country), size = 2.5) +
+  geom_flag(data = tibble(x = c(rep(1943,4),
+                                rep(2006,4),
+                                rep(1943,4)),
+                          gender = 'Male',
+                          label_dem = factor(c(rep('Infant (age 0)',4),
+                                               rep('Young (age 23 ~ 32)',4),
+                                               rep('Adult (age 46 ~ 64)',4)),
+                                             levels = c('Infant (age 0)',
+                                                        'Young (age 23 ~ 32)',
+                                                        'Adult (age 46 ~ 64)')),
+                          state = 'U',
+                          y = c(-4.9,-5.3,-5.7,-6.1,
+                                -2.1,-2.5,-2.9,-3.3,
+                                -4.9,-5.3,-5.7,-6.1),
+                          country = rep(c('it','us','gb','se'),3)),
+            aes(x = x, y = y, country = country), size = 2.5) +
   geom_segment(data = tibble(x = c(rep(1948,4),
                                    rep(2011,4),
                                    rep(1948,4)),
@@ -500,6 +500,225 @@ ggsave(plot_female / plot_male,
        width = 10,
        height = 5)
 
+## NEW VERTICAL
+smoothing_tibble_adj %>%
+  left_join(age_classes, by = "weight") %>%
+  filter(weight == 'U0') %>%
+  mutate(label_dem = 'Infant (age 0)') %>%
+  mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
+         alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
+  ggplot(aes(x = t, y = value)) + 
+  geom_segment(data = tibble(x = 1933,
+                             y = 0,
+                             xend = 2020,
+                             yend = 0,
+                             state = 'dU'),
+               aes(x = x, y = y, xend = xend, yend = yend),
+               alpha = 0.5, linetype = 'dashed') +
+  geom_line(aes(color = country),
+            alpha = 0.9,
+            linewidth = 0.5) +
+  geom_ribbon(aes(ymin = value-2*value.sd, ymax = value+2*value.sd,
+                  fill = country),  alpha = 0.4) +
+  annotate("rect", xmin = 1936, xmax = 1946, ymin = -6.35, ymax = -4.65,
+           alpha = 1, color = "gray", fill = "white") +
+  geom_flag(data = tibble(x = c(rep(1938,4),
+                                rep(1938,4)),
+                          gender = c(rep('Female', 4),
+                                     rep('Male', 4)),
+                          label_dem = factor(c(rep('Infant (age 0)',4),
+                                               rep('Infant (age 0)',4))),
+                          state = 'U',
+                          y = rep(c(-4.9,-5.3,-5.7,-6.1),2),
+                          country = rep(c('it','us','gb','se'),2)),
+            aes(x = x, y = y, country = country), size = 2.5) +
+  geom_segment(data = tibble(x = c(rep(1940,4),
+                                   rep(1940,4)),
+                             y = rep(c(-4.9,-5.3,-5.7,-6.1),2),
+                             xend = c(rep(1944,4),
+                                      rep(1944,4)),
+                             yend = rep(c(-4.9,-5.3,-5.7,-6.1),2),
+                             country = rep(c('ITA','US','UK','SWE'),2),
+                             gender = c(rep('Female',4),
+                                        rep('Male',4)),
+                             label_dem = factor(c(rep('Infant (age 0)',8))),
+                             state = 'U'),
+               aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
+  facet_nested(factor(state, levels = c('U', 'dU'),
+                      labels = c(U = latex2exp::TeX(r'($\beta$)'),
+                                 dU = latex2exp::TeX(r'($\partial\beta$)'))) ~ label_dem + gender,
+               scale = 'free',
+               labeller = labeller(.rows = label_parsed),
+               strip = strip_nested(
+                 text_x = elem_list_text(colour = c("black", "black")),
+                 background_x = elem_list_rect(fill = c("grey95", "white")),
+                 by_layer_x = TRUE)) +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  facetted_pos_scales(y = list(scale_y_continuous(n.breaks = 3), 
+                               scale_y_continuous(n.breaks = 3, limits = c(-0.5,0.5)))) +
+  scale_x_continuous(breaks = c(1940,1980,2020)) +
+  scale_color_manual(values = colors) +
+  scale_fill_manual(values = colors) +
+  labs(linetype = NULL,y = NULL,x = NULL) +
+  theme(legend.position = "none",
+        strip.text.y.right = element_text(angle = 0),
+        text = element_text(size = 9),
+        plot.margin = margin(b = 0),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(linetype = 'dashed')) -> plot_infant
+
+smoothing_tibble_adj %>%
+  left_join(age_classes, by = "weight") %>%
+  filter(weight == 'U7') %>%
+  mutate(label_dem = 'Young (age 23 ~ 32)') %>%
+  mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
+         alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
+  ggplot(aes(x = t, y = value)) + 
+  geom_segment(data = tibble(x = 1933,
+                             y = 0,
+                             xend = 2020,
+                             yend = 0,
+                             state = 'dU'),
+               aes(x = x, y = y, xend = xend, yend = yend),
+               alpha = 0.5, linetype = 'dashed') +
+  geom_line(aes(color = country),
+            alpha = 0.9,
+            linewidth = 0.5) +
+  geom_ribbon(aes(ymin = value-2*value.sd, ymax = value+2*value.sd,
+                  fill = country),  alpha = 0.4) +
+  annotate("rect", xmin = 1936, xmax = 1946, ymin = -6.4, ymax = -5.1,
+           alpha = 1, color = "gray", fill = "white") +
+  geom_flag(data = tibble(x = c(rep(1938,4),
+                                rep(1938,4)),
+                          gender = c(rep('Female', 4),
+                                     rep('Male', 4)),
+                          label_dem = factor(c(rep('Young (age 23 ~ 32)',4),
+                                               rep('Young (age 23 ~ 32)',4))),
+                          state = 'U',
+                          y = rep(c(-5.3,-5.6,-5.9,-6.2),2),
+                          country = rep(c('it','us','gb','se'),2)),
+            aes(x = x, y = y, country = country), size = 2.5) +
+  geom_segment(data = tibble(x = c(rep(1940,4),
+                                   rep(1940,4)),
+                             y = rep(c(-5.3,-5.6,-5.9,-6.2),2),
+                             xend = c(rep(1944,4),
+                                      rep(1944,4)),
+                             yend = rep(c(-5.3,-5.6,-5.9,-6.2),2),
+                             country = rep(c('ITA','US','UK','SWE'),2),
+                             gender = c(rep('Female',4),
+                                        rep('Male',4)),
+                             label_dem = factor(c(rep('Young (age 23 ~ 32)',8))),
+                             state = 'U'),
+               aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
+  facet_nested(factor(state, levels = c('U', 'dU'),
+                      labels = c(U = latex2exp::TeX(r'($\beta$)'),
+                                 dU = latex2exp::TeX(r'($\partial\beta$)'))) ~ label_dem + gender,
+               scale = 'free',
+               labeller = labeller(.rows = label_parsed),
+               strip = strip_nested(
+                 text_x = elem_list_text(colour = c("black", "black")),
+                 background_x = elem_list_rect(fill = c("grey95", "white")),
+                 by_layer_x = TRUE)) +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  facetted_pos_scales(y = list(scale_y_continuous(n.breaks = 3), 
+                               scale_y_continuous(n.breaks = 3, limits = c(-0.5,0.5)))) +
+  scale_x_continuous(breaks = c(1940,1980,2020)) +
+  scale_color_manual(values = colors) +
+  scale_fill_manual(values = colors) +
+  labs(linetype = NULL,y = NULL,x = NULL) +
+  theme(legend.position = "none",
+        strip.text.y.right = element_text(angle = 0),
+        text = element_text(size = 9),
+        plot.margin = margin(b = 0),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        axis.title.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(linetype = 'dashed')) -> plot_23_32
+
+
+smoothing_tibble_adj %>%
+  left_join(age_classes, by = "weight") %>%
+  filter(weight == 'U11') %>%
+  mutate(label_dem = 'Adult (age 46 ~ 64)') %>%
+  mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
+         alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
+  ggplot(aes(x = t, y = value)) + 
+  geom_segment(data = tibble(x = 1933,
+                             y = 0,
+                             xend = 2020,
+                             yend = 0,
+                             state = 'dU'),
+               aes(x = x, y = y, xend = xend, yend = yend),
+               alpha = 0.5, linetype = 'dashed') +
+  geom_line(aes(color = country),
+            alpha = 0.9,
+            linewidth = 0.5) +
+  geom_ribbon(aes(ymin = value-2*value.sd, ymax = value+2*value.sd,
+                  fill = country),  alpha = 0.4) +
+  annotate("rect", xmin = 1936, xmax = 1946, ymin = -4.65, ymax = -4,
+           alpha = 1, color = "gray", fill = "white") +
+  geom_flag(data = tibble(x = c(rep(1938,4),
+                                rep(1938,4)),
+                          gender = c(rep('Female', 4),
+                                     rep('Male', 4)),
+                          label_dem = factor(c(rep('Adult (age 46 ~ 64)',4),
+                                               rep('Adult (age 46 ~ 64)',4))),
+                          state = 'U',
+                          y = rep(c(-4.1,-4.25,-4.4,-4.55),2),
+                          country = rep(c('it','us','gb','se'),2)),
+            aes(x = x, y = y, country = country), size = 2.5) +
+  geom_segment(data = tibble(x = c(rep(1940,4),
+                                   rep(1940,4)),
+                             y = rep(c(-4.1,-4.25,-4.4,-4.55),2),
+                             xend = c(rep(1944,4),
+                                      rep(1944,4)),
+                             yend = rep(c(-4.1,-4.25,-4.4,-4.55),2),
+                             country = rep(c('ITA','US','UK','SWE'),2),
+                             gender = c(rep('Female',4),
+                                        rep('Male',4)),
+                             label_dem = factor(c(rep('Adult (age 46 ~ 64)',8))),
+                             state = 'U'),
+               aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
+  facet_nested(factor(state, levels = c('U', 'dU'),
+                      labels = c(U = latex2exp::TeX(r'($\beta$)'),
+                                 dU = latex2exp::TeX(r'($\partial\beta$)'))) ~ label_dem + gender,
+               scale = 'free',
+               labeller = labeller(.rows = label_parsed),
+               strip = strip_nested(
+                 text_x = elem_list_text(colour = c("black", "black")),
+                 background_x = elem_list_rect(fill = c("grey95", "white")),
+                 by_layer_x = TRUE)) +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  facetted_pos_scales(y = list(scale_y_continuous(n.breaks = 3), 
+                               scale_y_continuous(n.breaks = 3, limits = c(-0.5,0.5)))) +
+  scale_x_continuous(breaks = c(1940,1980,2020)) +
+  scale_color_manual(values = colors) +
+  scale_fill_manual(values = colors) +
+  labs(linetype = NULL,y = NULL,x = NULL) +
+  theme(legend.position = "none",
+        strip.text.y.right = element_text(angle = 0),
+        text = element_text(size = 9),
+        plot.margin = margin(b = 0),
+        axis.title.x = element_blank(),
+        panel.grid.minor.y = element_blank(),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.x = element_blank(),
+        panel.grid.major.x = element_line(linetype = 'dashed')) -> plot_46_64
+
+plot_infant / plot_23_32 / plot_46_64 -> plot_coeff
+
+ggsave(plot_coeff,
+       filename = here('output','smoothing.pdf'),
+       width = 10,
+       height = 8)
 
 #########################################
 ## Difference 2020 and average last 5   #
@@ -543,7 +762,7 @@ diff_state_2020avg5_adj %>%
                      aes(country = case_when(country == 'US' ~ 'us',
                                              country == 'UK' ~ 'gb',
                                              country == 'SWE' ~ 'se'),
-                         size = size), 
+                         size = size),
                      size = 3.8,
                      position = position_dodge2(0.9)) +
   ggflags::geom_flag(data = . %>%
@@ -553,7 +772,7 @@ diff_state_2020avg5_adj %>%
                      aes(country = case_when(country == 'US' ~ 'us',
                                              country == 'UK' ~ 'gb',
                                              country == 'SWE' ~ 'se'),
-                         size = size), 
+                         size = size),
                      size = 2.5,
                      position = position_dodge2(0.9)) +
   facet_grid(rows = vars(factor(state, 
@@ -652,6 +871,173 @@ ggsave(plot_covid,
        width = 10,
        height = 7)
 
+## NEW FLAGS VERSION
+diff_state_2020avg5_adj %>%
+  filter(state == "U") %>%
+  group_by(spline, gender, country, state) %>%
+  summarise(value.m = mean(value),
+            value.sd = sd(value)) %>%
+  left_join(age_classes, by = "spline") %>%
+  group_by(gender) %>%
+  mutate(max = max(value.m + 2*value.sd) + 0.04,
+         min = min(value.m - 2*value.sd) - 0.04) %>%
+  pivot_longer(cols = c(max,min),
+               names_to = "stripe.what", 
+               values_to = "stripe.limit") %>%
+  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+                         0.05,0)) %>%
+  group_by(gender, country, range) %>%
+  filter(gender == 'Male') %>%
+  ggplot(aes(x = factor(range, levels=age_classes$range),
+             y = value.m,
+             group = country)) +
+  geom_col(aes(y = stripe.limit, alpha = stripe), 
+           position = 'identity', fill = 'grey') +
+  geom_hline(yintercept = 0, linetype = 'dashed', alpha = 0.5) +
+  geom_tile(data = . %>%
+              group_by(gender, country, range, state) %>%
+              slice(1),
+            aes(y = value.m, 
+                height = 4*value.sd,
+                fill = country),
+            width = 0.9,
+            position = position_dodge2(1),
+            alpha = 0.4) +
+  geom_point(data = . %>%
+               filter(state == 'U') %>%
+               group_by(gender, country, range, state) %>%
+               slice(1),
+             aes(color = country),
+             size = 3.8,
+             position = position_dodge2(0.9),
+             alpha = 0.8) +
+  geom_line(data = . %>%
+              filter(state == 'U') %>%
+              group_by(gender, country, range, state) %>%
+              slice(1),
+            aes(color = country),
+            position = position_dodge2(0.9),
+            alpha = 0.7) +
+  annotate("rect", xmin = 15.5, xmax = 17.5, ymin = -0.28, ymax = -0.16,
+           alpha = 1, color = "gray", fill = "white") +
+  geom_flag(data = tibble(x = rep(16,3),
+                          gender = 'Male',
+                          y = c(-0.19,-0.22,-0.25),
+                          country = c('us','gb','se')),
+            aes(x = x, y = y, country = country), 
+            size = 4) +
+  geom_segment(data = tibble(x = rep(16.4,3),
+                             y = c(-0.19,-0.22,-0.25),
+                             xend = rep(17,3),
+                             yend = c(-0.19,-0.22,-0.25),
+                             country = c('US','UK','SWE'),
+                             gender = 'Male'),
+               aes(x = x, y = y, 
+                   xend = xend, yend = yend, 
+                   color = country),
+               linewidth = 1.8,
+               alpha = 0.8) +
+  facet_grid(cols = vars(gender),
+             scale = 'free_y') +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  scale_alpha_continuous(range = c(0,0.05)) + 
+  scale_y_continuous(expand = c(0,0), n.breaks = 3) +
+  scale_fill_manual(values = colors[c('US','SWE','UK')]) +
+  scale_color_manual(values = colors[c('US','SWE','UK')]) +
+  guides(alpha = "none", color = "none", fill = "none",
+         size = "none") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1),
+        panel.grid = element_blank(),
+        plot.margin = margin(t = 0),
+        strip.text.y.right = element_text(angle = 0),
+        axis.title = element_blank()) -> plot_covid_male
+
+
+diff_state_2020avg5_adj %>%
+  filter(state == "U") %>%
+  group_by(spline, gender, country, state) %>%
+  summarise(value.m = mean(value),
+            value.sd = sd(value)) %>%
+  left_join(age_classes, by = "spline") %>%
+  group_by(gender) %>%
+  mutate(max = max(value.m + 2*value.sd) + 0.04,
+         min = min(value.m - 2*value.sd) - 0.04) %>%
+  pivot_longer(cols = c(max,min),
+               names_to = "stripe.what", 
+               values_to = "stripe.limit") %>%
+  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+                         0.05,0)) %>%
+  group_by(gender, country, range) %>%
+  filter(gender == 'Female') %>%
+  ggplot(aes(x = factor(range, levels=age_classes$range),
+             y = value.m,
+             group = country)) +
+  geom_col(aes(y = stripe.limit, alpha = stripe), 
+           position = 'identity', fill = 'grey') +
+  geom_hline(yintercept = 0, linetype = 'dashed', alpha = 0.5) +
+  geom_tile(data = . %>%
+              group_by(gender, country, range, state) %>%
+              slice(1),
+            aes(y = value.m, 
+                height = 4*value.sd,
+                fill = country),
+            width = 0.9,
+            position = position_dodge2(1),
+            alpha = 0.4) +
+  geom_point(data = . %>%
+               filter(state == 'U') %>%
+               group_by(gender, country, range, state) %>%
+               slice(1),
+             aes(color = country),
+             size = 3.8,
+             position = position_dodge2(0.9),
+             alpha = 0.8) +
+  geom_line(data = . %>%
+              filter(state == 'U') %>%
+              group_by(gender, country, range, state) %>%
+              slice(1),
+            aes(color = country),
+            position = position_dodge2(0.9),
+            alpha = 0.7) +
+  annotate("rect", xmin = 15.5, xmax = 17.5, ymin = -0.31, ymax = -0.19,
+           alpha = 1, color = "gray", fill = "white") +
+  geom_flag(data = tibble(x = rep(16,3),
+                          gender = 'Female',
+                          y = c(-0.22,-0.25,-0.28),
+                          country = c('us','gb','se')),
+            aes(x = x, y = y, country = country), 
+            size = 4) +
+  geom_segment(data = tibble(x = rep(16.4,3),
+                             y = c(-0.22,-0.25,-0.28),
+                             xend = rep(17,3),
+                             yend = c(-0.22,-0.25,-0.28),
+                             country = c('US','UK','SWE'),
+                             gender = 'Female'),
+               aes(x = x, y = y, 
+                   xend = xend, yend = yend, 
+                   color = country),
+               linewidth = 1.8,
+               alpha = 0.8) +
+  facet_grid(cols = vars(gender),
+             scale = 'free_y') +
+  ggh4x::force_panelsizes(rows = c(2, 1)) + 
+  scale_alpha_continuous(range = c(0,0.05)) + 
+  scale_y_continuous(expand = c(0,0), n.breaks = 3) +
+  scale_fill_manual(values = colors[c('US','SWE','UK')]) +
+  scale_color_manual(values = colors[c('US','SWE','UK')]) +
+  guides(alpha = "none", color = "none", fill = "none") +
+  theme(panel.grid = element_blank(),
+        plot.margin = margin(b = 0),
+        axis.text.x = element_blank(),
+        axis.ticks.x = element_blank(),
+        strip.text.y.right = element_text(angle = 0),
+        axis.title = element_blank()) -> plot_covid_female
+
+plot_covid_female / plot_covid_male -> plot_covid
+ggsave(plot_covid,
+       filename = here('output','2020_avg5.pdf'),
+       width = 10,
+       height = 7)
 
 #########################################
 ## 3-d Data plot      ###################

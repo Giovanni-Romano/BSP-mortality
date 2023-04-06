@@ -297,7 +297,7 @@ xRes <- res_log %>%
   # relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'Median absolute deviation of the mortality log-rate.')
+         caption = 'EXTRA (FRA-DNK-CZE): Median absolute deviation of the mortality log-rate.')
 
 print.xtable(xRes,
              file = here('output','table_median_extra.tex'),
@@ -324,7 +324,7 @@ xRes <- res_log %>%
   # relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'RMSE of the mortality log-rate.')
+         caption = 'EXTRA (FRA-DNK-CZE): Root mean squared error of the mortality log-rate.')
 
 print.xtable(xRes,
              file = here('output','table_rmse_extra.tex'),
@@ -353,7 +353,7 @@ xRes <- res_log %>%
   # relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'Coverage of 95% prediction interval')
+         caption = 'EXTRA (FRA-DNK-CZE): Coverage of 95\\% prediction interval')
 
 print.xtable(xRes,
              file = here('output','table_uq_extra.tex'),
@@ -380,7 +380,7 @@ xRes <- res_log %>%
   # relocate(NGP, .before = PLAT) %>%
   xtable(x = ., 
          digits = 3,
-         caption = 'Average width of 95% prediction interval')
+         caption = 'EXTRA (FRA-DNK-CZE): Average width of 95\\% prediction interval')
 
 print.xtable(xRes,
              file = here('output','table_width_extra.tex'),

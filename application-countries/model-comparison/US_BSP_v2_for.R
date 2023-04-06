@@ -44,7 +44,8 @@ cg <- c('us_man',
 
 res_forward <- lapply(cg, 
                       . %>% rolling_uq(., 
-                                       n_for = n_for))
+                                       n_for = n_for,
+                                       parallel = TRUE))
 names(res_forward) <- cg
 
 output_collector <- append(output_collector, 
@@ -53,4 +54,4 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','US_uq3_for.Rdata'))
+     file = here('output','US_uq_for.Rdata'))

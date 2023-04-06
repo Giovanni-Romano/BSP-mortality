@@ -273,26 +273,6 @@ ngp.model <- function(rates,
     Q_tmp[3,2] <- sigma2_a/2 * delta^2 * lambda
   Q_tmp[3,3] <- sigma2_a*delta
   Qt <- kronecker(diag(1,K+1), Q_tmp)
-  # for(I in 1:(K+1-1)){
-  #   for(J in (I+1):(K+1)){
-  #     rho_u <- 0 # No correlation structure
-  #     rho_a <- 0 
-  #     Q_tmp[1,1] <- sigma2_u/3 * rho_u * delta^3 * lambda^2 + 
-  #       sigma2_a/20 * rho_a * delta^5 * lambda^4
-  #     Q_tmp[1,2] <- 
-  #       Q_tmp[2,1] <- sigma2_u/2 * rho_u*delta^2 * lambda + 
-  #       sigma2_a/8 * rho_a*delta^4 * lambda^3
-  #     Q_tmp[1,3] <- 
-  #       Q_tmp[3,1] <- sigma2_a/6 * rho_a * delta^3 * lambda^2
-  #     Q_tmp[2,2] <- sigma2_u * rho_u * delta + 
-  #       sigma2_a/3 * rho_a*delta^3 * lambda^2
-  #     Q_tmp[2,3] <- 
-  #       Q_tmp[3,2] <- sigma2_a/2 * rho_a * delta^2 * lambda
-  #     Q_tmp[3,3] <- sigma2_a*rho_a*delta
-  #     Qt[(1+(I-1)*3):(I*3),(1+(J-1)*3):(J*3)] <- 
-  #       Qt[(1+(J-1)*3):(J*3),(1+(I-1)*3):(I*3)] <- Q_tmp
-  #   }
-  # }
   
   # Observational variance
   sigma2_e <- NA
@@ -338,22 +318,6 @@ ngp.model <- function(rates,
     Q_tmp[2,3] <- Q_tmp[3,2] <- sigma2_a/2*delta^2*lambda
     Q_tmp[3,3] <- sigma2_a*delta
     Qt <- kronecker(diag(1,K+1), Q_tmp)
-    # for(I in 1:(K+1-1)){
-    #   for(J in (I+1):(K+1)){
-    #     rho_u <- 0
-    #     rho_a <- 0
-    #     Q_tmp <- matrix(NA, 3, 3)
-    #     Q_tmp[1,1] <- sigma2_u/3*rho_u*delta^3*lambda^2 + sigma2_a/20*rho_a*delta^5*lambda^4
-    #     Q_tmp[1,2] <- Q_tmp[2,1] <- sigma2_u/2*rho_u*delta^2*lambda + 
-    #       sigma2_a/8*rho_a*delta^4*lambda^3
-    #     Q_tmp[1,3] <- Q_tmp[3,1] <- sigma2_a/6*rho_a*delta^3*lambda^2
-    #     Q_tmp[2,2] <- sigma2_u*rho_u*delta + sigma2_a/3*rho_a*delta^3*lambda^2
-    #     Q_tmp[2,3] <- Q_tmp[3,2] <- sigma2_a/2*rho_a*delta^2*lambda
-    #     Q_tmp[3,3] <- sigma2_a*rho_a*delta
-    #     Qt[(1+(I-1)*3):(I*3),(1+(J-1)*3):(J*3)] <- 
-    #       Qt[(1+(J-1)*3):(J*3),(1+(I-1)*3):(I*3)] <- Q_tmp
-    #   }
-    # }
     model["Q", etas='custom'] <- Qt
     T_tmp <- diag(1,3)
     T_tmp[1,2] <- T_tmp[2,3] <- delta*lambda

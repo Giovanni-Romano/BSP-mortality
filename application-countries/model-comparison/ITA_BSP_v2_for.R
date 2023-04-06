@@ -45,7 +45,7 @@ cg <- c('ita_man',
 res_forward <- lapply(cg, 
                       . %>% rolling_uq(., 
                                        n_for = n_for,
-                                       parallel = FALSE))
+                                       parallel = TRUE))
 names(res_forward) <- cg
 
 output_collector <- append(output_collector, 
@@ -54,4 +54,4 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','ITA_uq3_for.Rdata'))
+     file = here('output','ITA_uq_for.Rdata'))
