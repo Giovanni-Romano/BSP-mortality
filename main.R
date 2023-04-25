@@ -37,10 +37,10 @@ source(here('application-countries','plot.R'))
 
 ### Rolling window and model comparison
 # BSP model
-source(here('application-countries','model-comparison','ITA_BSP_for.R'))
-source(here('application-countries','model-comparison','SWE_BSP_for.R'))
-source(here('application-countries','model-comparison','UK_BSP_for.R'))
-source(here('application-countries','model-comparison','US_BSP_for.R'))
+source(here('application-countries','model-comparison','ITA_BSP_uq_for.R'))
+source(here('application-countries','model-comparison','SWE_BSP_uq_for.R'))
+source(here('application-countries','model-comparison','UK_BSP_uq_for.R'))
+source(here('application-countries','model-comparison','US_BSP_uq_for.R'))
 # Alternative models for comparison
 # (Computationally intensive part due to rolling window)
 # (these requires further libraries loaded in the respective scripts)

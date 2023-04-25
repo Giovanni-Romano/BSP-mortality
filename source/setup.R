@@ -10,7 +10,7 @@ matern_kernel <- function(x, phi = 0.5, kappa = 2){
 }
 
 # Delta value indicating frequency of observations (here equally spaced)
-delta <- 0.01
+delta <- 1 # 0.01
 
 # Spline knots
 age_knots <- c(seq(from=5, to=40, by=5), 50, 60, seq(from=70, to=95, by=5))
