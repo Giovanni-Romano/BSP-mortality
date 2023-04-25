@@ -137,56 +137,7 @@ for(country_gender in names(res_forward)){
 rm(list = 'res_forward')
 
 
-# # BSP model results
-# BSP_res_age <- tibble()
-# for(country in c('UK', 'US', 'ITA', 'SWE')){
-#   load(here('output', paste(country, '_for.Rdata', sep = '')))
-#   print(names(res_forward))
-#   for(country_gender in names(res_forward)){
-#     BSP_res_age <- bind_rows(BSP_res_age,
-#                              processBSP(item = res_forward[[country_gender]],
-#                                         rates = data_list[[country_gender]]$rates,
-#                                         country = country) %>%
-#                                mutate(data = country_gender)) %>%
-#       mutate(model = 'BSP')
-#   }
-# }
-# rm(list = 'res_forward')
-
-## New
-
-# # NGP model results
-# NGP_res_age <- tibble()
-# for(country in c('UK', 'US', 'ITA', 'SWE')){
-#   load(here('output', paste(country, '_NGP_delta1_for.Rdata', sep = '')))
-#   print(names(res_forward))
-#   for(country_gender in names(res_forward)){
-#     NGP_res_age <- bind_rows(NGP_res_age,
-#                              processBSP(item = res_forward[[country_gender]],
-#                                         rates = data_list[[country_gender]]$rates,
-#                                         country = country) %>%
-#                                mutate(data = country_gender)) %>%
-#       mutate(model = 'NGP')
-#   }
-# }
-# rm(list = 'res_forward')
-
-# # Kalman model results
-# Kalman_res_age <- tibble()
-# for(country in c('UK', 'US', 'ITA', 'SWE')){
-#   load(here('output', paste(country, '_Kalman_for.Rdata', sep = '')))
-#   print(names(res_forward))
-#   for(country_gender in names(res_forward)){
-#     Kalman_res_age <- bind_rows(Kalman_res_age,
-#                                 processBSP(item = res_forward[[country_gender]],
-#                                            rates = data_list[[country_gender]]$rates,
-#                                            country = country) %>%
-#                                   mutate(data = country_gender)) %>%
-#       mutate(model = 'Kalman')
-#   }
-# }
-# rm(list = 'res_forward')
-
+# BSP model results
 BSP_uq_res_age <- tibble()
 for(country in c('FRA', 'DNK', 'CZE')){
   load(here('output', paste(country, '_uq_for.Rdata', sep = '')))

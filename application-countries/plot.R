@@ -562,7 +562,7 @@ smoothing_tibble_adj %>%
   labs(linetype = NULL,y = NULL,x = NULL) +
   theme(legend.position = "none",
         strip.text.y.right = element_text(angle = 0),
-        text = element_text(size = 9),
+        text = element_text(size = 12),
         plot.margin = margin(b = 0),
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
@@ -633,7 +633,7 @@ smoothing_tibble_adj %>%
   labs(linetype = NULL,y = NULL,x = NULL) +
   theme(legend.position = "none",
         strip.text.y.right = element_text(angle = 0),
-        text = element_text(size = 9),
+        text = element_text(size = 12),
         plot.margin = margin(b = 0),
         axis.text.x = element_blank(),
         axis.ticks.x = element_blank(),
@@ -705,7 +705,7 @@ smoothing_tibble_adj %>%
   labs(linetype = NULL,y = NULL,x = NULL) +
   theme(legend.position = "none",
         strip.text.y.right = element_text(angle = 0),
-        text = element_text(size = 9),
+        text = element_text(size = 12),
         plot.margin = margin(b = 0),
         axis.title.x = element_blank(),
         panel.grid.minor.y = element_blank(),
@@ -716,7 +716,7 @@ smoothing_tibble_adj %>%
 plot_infant / plot_23_32 / plot_46_64 -> plot_coeff
 
 ggsave(plot_coeff,
-       filename = here('output','smoothing.pdf'),
+       filename = here('output','smoothing_vert.pdf'),
        width = 10,
        height = 8)
 
@@ -1240,6 +1240,7 @@ data_ita %>%
   scale_x_continuous(n.breaks = 10) +
   guides(color = "none") +
   theme(panel.grid = element_blank(),
+        text = element_text(size = 12),
         strip.background = element_rect(fill = 'grey95'),
         plot.margin = margin(r = 0),
         axis.title = element_blank()) -> plot_ages
