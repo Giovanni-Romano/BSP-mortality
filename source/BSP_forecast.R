@@ -26,13 +26,13 @@ require(mvtnorm)
 #
 
 fitandforecast_uq <- function(model, 
-                              h, 
-                              Z, 
-                              rep, 
-                              n_for, 
-                              method = 'Nelder-Mead', 
-                              parallel = FALSE, 
-                              maxcl = 30) 
+                               h, 
+                               Z, 
+                               rep, 
+                               n_for, 
+                               method = 'Nelder-Mead', 
+                               parallel = FALSE, 
+                               maxcl = 30) 
 {
   fit <- bsp.fit(model, 
                  rep = rep, 
@@ -44,7 +44,7 @@ fitandforecast_uq <- function(model,
   ## Fitting random-walk with drift for prediction
   # Simulation from the smoothing distribution
   # Smoothing distribution
-  smooth <- KFS(fit$fit, smoothing = c('state','signal')) #TODO: USE sim_states for less comptime
+  smooth <- KFS(fit$fit, smoothing = c('state','signal'))
   sim_states <- simulateSSM(fit$fit, 
                             type = 'states',
                             filtered = FALSE,
@@ -53,20 +53,26 @@ fitandforecast_uq <- function(model,
                             nsim = 100)
   sim_last25 <- tail(sim_states, 
                      n = c(n_for,3*(K+1),dim(sim_states)[3]))
+  sim_last25_B25 <- tail(sim_states, 
+                         n = c(2*n_for,3*(K+1),dim(sim_states)[3]))[1:n_for,,]
   U <- apply(sim_last25[,paste("U",0:19,sep=""),],
              MARGIN = c(1,2), mean)
-  U_m <- apply(sim_states[train - n_for + 1, paste('U', 0:K, sep = ''),],
-               MARGIN = 1, mean)
+
+  U_m_B25 <- apply(sim_states[train - 2*n_for, paste('U', 0:K, sep = ''),],
+                   MARGIN = 1, mean)
   dU <- apply(sim_last25[,paste("dU",0:19,sep=""),],
               MARGIN = c(1,2), mean) %>%
+    apply(MARGIN = 2, median)
+  dU_B25 <- apply(sim_last25_B25[,paste("dU",0:19,sep=""),],
+                  MARGIN = c(1,2), mean) %>%
     apply(MARGIN = 2, median)
   drift_median_var <- apply(sim_last25[,paste("dU",0:19,sep=""),],
                             MARGIN = c(2,3), median) %>%
     apply(MARGIN = 1, var)
-  dU_var_mean <- smooth$V %>%
-    tail(n = c(3*(K+1), 3*(K+1), n_for)) %>% # selecting last n_for years
-    `[`(seq(2, 3*(K+1), by = 3), seq(2, 3*(K+1), by = 3), ) %>%
-    apply(MARGIN = c(1,2), mean)
+  drift_median_var_B25 <- apply(sim_last25_B25[,paste("dU",0:19,sep=""),],
+                                MARGIN = c(2,3), median) %>%
+    apply(MARGIN = 1, var)
+
   ## Creating random walk + dirft model
   Tt_pred <- fit$fit$T[1,2,1] # lambda*delta
   kernel <- fit$info$kernel
@@ -76,7 +82,7 @@ fitandforecast_uq <- function(model,
   sigma2_u <- NA
   Qt_pred <- diag(2*(K+1))
   diag(Qt_pred)[1:(K+1)] <- sigma2_u
-  diag(Qt_pred)[-c(1:(K+1))] <- Tt_pred^2 * drift_median_var
+  diag(Qt_pred)[-c(1:(K+1))] <- NA 
   for(I in 1:(K+1-1)){
     for(J in (I+1):(K+1)){
       rho_u <- kernel(x = abs(ages_max[J]-ages_max[I]))
@@ -90,30 +96,28 @@ fitandforecast_uq <- function(model,
   Zt_pred_ <- fit$fit$Z[, seq(1, 3*(K+1), by = 3), ]
   Zt_pred <- matrix(0, Z, 2*(K+1))
   Zt_pred[, 1:(K+1)] <- Zt_pred_
-  a1_pred <- matrix(c(U_m,
-                      Tt_pred*dU), 
+  a1_pred <- matrix(c(U_m_B25 + Tt_pred*dU_B25,
+                      Tt_pred*dU_B25), 
                     2*(K+1), 1) # last year of training
-  P1_pred_ <- smooth$V %>%
-    tail(n = c(3*(K+1), 3*(K+1), 1)) %>% # selecting last year 
-    # extracting only var(u) components
-    `[`(seq(1, 3*(K+1), by = 3), seq(1, 3*(K+1), by = 3), ) 
-  P1_pred <- diag(1, 2*(K+1), 2*(K+1))
-  P1_pred[1:(K+1), 1:(K+1)] <- smooth$V[seq(1, 3*(K+1), by = 3),seq(1, 3*(K+1), by = 3),train-n_for+1] # P1_pred_
-  diag(P1_pred[-c(1:(K+1)), -c(1:(K+1))]) <- Tt_pred^2 * drift_median_var# drift_median_var diag(dU_var_mean)
+
+  P1_pred <- matrix(0, 2*(K+1), 2*(K+1))
+  P1_pred[1:(K+1), 1:(K+1)] <- smooth$P[seq(1, 3*(K+1), by = 3),seq(1, 3*(K+1), by = 3),train-n_for+1] # +
+   # diag(Tt_pred^2 * drift_median_var_B25)
+  diag(P1_pred[-c(1:(K+1)), -c(1:(K+1))]) <- Tt_pred^2 * drift_median_var_B25
+
   Ht_pred <- diag(NA, Z)
   state_names <- c(paste('U', 0:K, sep = ''),
                    paste('drift', 0:K, sep = ''))
   
-  ## Fit rw-error sigma_e to data 
-  # Use KFAS!
   updatefn <- function(pars, 
                        model,
                        Z,
-                       drift_var){
+                       delta_lambda_sq){
     sigma2_u <- exp(pars[1])
+    drift_var <- exp(pars[2])
     Qt_pred <- diag(2*(K+1))
     diag(Qt_pred)[1:(K+1)] <- sigma2_u
-    diag(Qt_pred)[-c(1:(K+1))] <- drift_var
+    diag(Qt_pred)[-c(1:(K+1))] <- delta_lambda_sq*drift_var
     for(I in 1:(K+1-1)){
       for(J in (I+1):(K+1)){
         rho_u <- kernel(x = abs(ages_max[J]-ages_max[I]))
@@ -121,30 +125,43 @@ fitandforecast_uq <- function(model,
       }
     }
     model["Q"] <- Qt_pred
-    model["H"] <- diag(exp(pars[2]), Z)
+    model["H"] <- diag(exp(pars[3]), Z)
     model
   }
+
   rwd_gauss <- SSModel(tail(model$model$y, n = n_for, k = 1) ~ -1 + 
                          SSMcustom(Z = Zt_pred, T = Tt_pred_mat,
                                    R = Rt_pred, Q = Qt_pred,
                                    state_names = state_names,
                                    a1 = a1_pred,
                                    P1 = P1_pred,
+                                   # P1inf = diag(1, 2*(K+1), 2*(K+1)),
                                    n = nrow(tail(model$model$y, n = n_for, k = 1))), 
                        distribution = 'gaussian',
                        H = Ht_pred)
-  rwd_kfas_fit <- fitSSM(rwd_gauss, 
-                         inits = log(runif(2, min = 1e-4, max = 2)), 
-                         method = method,
-                         updatefn = updatefn,
-                         checkfn = model$info$checkfn,
-                         update_args = list(Z = Z,
-                                            drift_var = Tt_pred^2 * drift_median_var))
-  rwd_smooth <- KFS(rwd_kfas_fit$model,
+  starting_values <- lapply(1:3, 
+                            function(x) log(runif(3, min = 1e-4, max = 2)))
+  rwd_kfas_fit_list <- lapply(starting_values,
+                              function(init){
+                                fitSSM(rwd_gauss,
+                                       inits = init,
+                                       method = method,
+                                       updatefn = updatefn,
+                                       checkfn = model$info$checkfn,
+                                       update_args = list(Z = Z,
+                                                          delta_lambda_sq = Tt_pred^2))
+                              })
+  best_fit <- which.min(sapply(rwd_kfas_fit_list, . %>% 
+                                 `$`(.,optim.out) %>%
+                                 `$`(.,value)))
+  rwd_kfas_fit <- rwd_kfas_fit_list[[best_fit]]
+
+  rwd_gauss_fit <- rwd_kfas_fit$model
+  rwd_smooth <- KFS(rwd_gauss_fit,
                     smoothing = c('state'))
   V_rwd <- rwd_smooth$V[,,n_for]
-  Qt_pred <- rwd_kfas_fit$model$Q[,,1]
-  H_rwd <- rwd_kfas_fit$model$H[,,1]
+  Qt_pred <- rwd_gauss_fit$Q[,,1] 
+  H_rwd <- rwd_gauss_fit$H[,,1] 
   # Prediction h-step ahead
   a1_pred <- tail(U, n = 1 ,k = 1) # Now a1 is last observed year
   U_pred <- matrix(NA, nrow = h, ncol = K+1)
@@ -160,7 +177,7 @@ fitandforecast_uq <- function(model,
         Zt_pred %*% varU_ext_pred[,,1] %*% t(Zt_pred)
     } else {
       U_pred[tt,] <- U_pred[tt-1,] + Tt_pred%*%dU
-      varU_ext_pred[,,tt] <- Tt_pred_mat %*% varU_ext_pred[,,tt-1] %*% Tt_pred_mat + Qt_pred #+ U_var_mean
+      varU_ext_pred[,,tt] <- Tt_pred_mat %*% varU_ext_pred[,,tt-1] %*% Tt_pred_mat + Qt_pred 
       f_pred[tt,] <- Zt_pred_%*%U_pred[tt,]
       varf_pred[,,tt] <- H_rwd + 
         Zt_pred %*% varU_ext_pred[,,tt] %*% t(Zt_pred)
