@@ -314,8 +314,8 @@ smoothing_tibble <- lapply(smooth_list, . %>%
 smoothing_tibble_adj <- smoothing_tibble %>%
   filter(state %in% c('U','dU')) %>%
   mutate(lambda_delta = case_when(state == 'U' ~ 1,
-                                  data == 'ita_man' ~ lambda_est$ita_man*delta,
-                                  data == 'ita_woman' ~ lambda_est$ita_woman*delta)) %>%
+                                  data == 'ita_man' ~ lambda_est$ita_man*delta*0.01,
+                                  data == 'ita_woman' ~ lambda_est$ita_woman*delta*0.01)) %>%
   mutate_at(vars(value, value.sd), ~ .*lambda_delta) %>%
   mutate_at(vars(gender), ~ ifelse(. == 'man', 'Male', 'Female')) %>%
   mutate_at(vars(country), .f = toupper)
@@ -443,22 +443,25 @@ plot_female / plot_male
 
 # Male Mortality Forecast via Random Walk plus Drift
 
-As described in the paper, mortality forecasts are obtained via a **random walk with drift** model estimated over the smoothing means of the last 25 years. The code to fit and forecast $h$ step ahead is availble in `source/BSP_forecast.R` through the function `fitandforecast`. This function first call `bsp.fit` to fit the model, and then build the forecast via the random walk plus drift model. 
+As described in the paper, mortality forecasts are obtained via a **random walk with drift** model estimated over the smoothing means of the last 25 years. The code to fit and forecast $h$ step ahead is availble in `source/BSP_forecast.R` through the function `fitandforecast_uq`. This function first call `bsp.fit` to fit the model, and then build the forecast via the random walk plus drift model. 
 
-Since we have already fit the model, we extract and use here only the part of `fitandforecast` that defines, fits, and forecasts the random walk plus drift model.
+Since we have already fit the model, we extract and use here only the part of `fitandforecast_uq` that defines, fits, and forecasts the random walk plus drift model.
 
-For the sake of simplicity of the illustration in this notebook, we restrict the forecast step only to one of the two datasets (e.g. male mortality). Clearly, the procedure is general, and applicable to any dataset (also simply via `lapply` with the `fitandforecast` function).
+For the sake of simplicity of the illustration in this notebook, we restrict the forecast step only to one of the two datasets (e.g. male mortality). Clearly, the procedure is general, and applicable to any dataset (also simply via `lapply` with the `fitandforecast_uq` function).
 
 The random walk plus drift model is defined as (notation of the paper):
 $$
-\beta_{t_{s^*+1}} = \beta_{t_{s^*}} + \hat{\lambda}\delta_{s^*}\hat{\Delta} + \omega_{t_{s^*}} \qquad \omega_{t_{s^*}}\overset{\text{i.i.d.}}{\sim}N_p(0,W),
+\text{log}\,m_{t_{s^*}} = [g_1, \dots, g_p]\beta_{t_{s^*}} + \nu_{t_{s^*}} \qquad \nu_{t_{s^*}}\overset{\text{i.i.d.}}{\sim}N_k(0,\sigma^2_\psi I_k) \\
+\beta_{t_{s^*+1}} = \beta_{t_{s^*}} + \hat{\lambda}\delta_{s^*}\,\Delta_{t_{s^*}} + \omega_{t_{s^*}} \qquad \omega_{t_{s^*}}\overset{\text{i.i.d.}}{\sim}N_p(0,W), \\
+\Delta_{t_{s^*+1}} = \Delta_{t_{s^*}} + \epsilon_{t_{s^*}} \qquad \epsilon_{t_{s^*}}\overset{\text{i.i.d.}}{\sim}N_p(0,\sigma^2_\Delta I_p)
 $$
-with $W_{[j,l]}=\sigma^2_\omega\rho_{\beta_{[j,l]}}$.
+with $W_{[j,l]}=\sigma^2_\omega\rho_{\beta_{[j,l]}}$. Refer to the paper for all the details.
 
-The following code computes $\hat{\Delta}$ as the median of the smoothing distribution of $\beta_{t}$ over the last 25 years, and estimates $\sigma^2_\omega$ via maximum likelihood on the mean of the smoothing distribution of $\beta_{t}$. The function `optim_rwd` in `source/BSP_forecast.R` provides the likelhood function of the random walk plus drift model.
+The following code computes $\hat{\Delta}$ as the median of the smoothing distribution of $\beta_{t}$ over the last 25 years, and estimates $(\sigma^2_\psi,\sigma^2_\omega,\sigma^2_\Delta)$ via maximum marginal likelihood computed fitting the model on the last 25 years. 
 
 ```{r rw_fit}
 source(here('source','BSP_forecast.R'))
+model <- model_list$ita_man
 fit <- fit_list$ita_man
 smooth <- smooth_list$ita_man
 train <- length(years)
@@ -467,96 +470,168 @@ h <- 10
 # The following code is extracted and adapted from the fitandforecast() function
 K <- fit$info$K
 Z <- fit$info$Z
-## Fitting random-walk with drif for prediction
-# Extracting info on U and dU from BSP model
-U_m <- smooth$alphahat[, paste('U', 0:K, sep = '')][train - n_for + 1,]
-U <- smooth$alphahat[, paste('U', 0:K, sep = '')] %>% 
-  tail(n = n_for, k = 1) # selecting last n_for years
-dU <- apply(smooth$alphahat[, paste('dU', 0:K, sep = '')] %>%
-              tail(n = n_for, k = 1), # selecting last n_for years
-            MARGIN = 2, median)
+## Fitting random-walk with drift for prediction
+sim_states <- simulateSSM(fit$fit, 
+                          type = 'states',
+                          filtered = FALSE,
+                          conditional = TRUE,
+                          antithetics = TRUE,
+                          nsim = 100)
+sim_last25 <- tail(sim_states, 
+                   n = c(n_for,3*(K+1),dim(sim_states)[3]))
+sim_last25_B25 <- tail(sim_states, 
+                       n = c(2*n_for,3*(K+1),dim(sim_states)[3]))[1:n_for,,]
+U <- apply(sim_last25[,paste("U",0:19,sep=""),],
+           MARGIN = c(1,2), mean)
+
+U_m_B25 <- apply(sim_states[train - 2*n_for, paste('U', 0:K, sep = ''),],
+                 MARGIN = 1, mean)
+dU <- apply(sim_last25[,paste("dU",0:19,sep=""),],
+            MARGIN = c(1,2), mean) %>%
+  apply(MARGIN = 2, median)
+dU_B25 <- apply(sim_last25_B25[,paste("dU",0:19,sep=""),],
+                MARGIN = c(1,2), mean) %>%
+  apply(MARGIN = 2, median)
+drift_median_var <- apply(sim_last25[,paste("dU",0:19,sep=""),],
+                          MARGIN = c(2,3), median) %>%
+  apply(MARGIN = 1, var)
+drift_median_var_B25 <- apply(sim_last25_B25[,paste("dU",0:19,sep=""),],
+                              MARGIN = c(2,3), median) %>%
+  apply(MARGIN = 1, var)
+
 ## Creating random walk + dirft model
 Tt_pred <- fit$fit$T[1,2,1] # lambda*delta
 kernel <- fit$info$kernel
 ages_max <- fit$info$ages_max
-# Estimation of rw + drift
-rep_pred <- 5
-starting_values <- log(runif(rep_pred, min = 1e-2, max = 2))
-fit_rw_list <- lapply(starting_values, 
-                      function(init){
-                        try(optim(par = init,
-                                  fn = optim_rwd,
-                                  method = "L-BFGS-B",
-                                  control = list(maxit = 1e6),
-                                  u = U, 
-                                  mu0 = U_m,
-                                  Tt = Tt_pred,
-                                  drift = dU,
-                                  kernel = fit$info$kernel,
-                                  ages_max = fit$info$ages_max,
-                                  K = K), TRUE)
-                      })
-# Checking failed optim
-fit_rw_list_clean <- discard(fit_rw_list, 
-                             . %>% inherits(., 'try-error'))
-if(length(fit_rw_list_clean) == 0){
-  print('All optimization attempts failed..')
-}
-# Extracting best fit
-best_fit_rw <- which.min(sapply(fit_rw_list_clean, . %>% `$`(.,value)))
-fit_rw <- fit_rw_list_clean[[best_fit_rw]]
-```
 
-Once the random walk with drift model is estimated, we can forecast $\beta_t$ for, e.g., the next 10 years. The forecast for the age-specific mortality rates can be then straightforwardly obtained by linear combination with the spline basis functions.
-```{r forecast}
 ## Composing rw + drift with estimated sigma2_u
-sigma2_u <- exp(fit_rw$par)
-Qt_pred <- diag(K+1) * sigma2_u
+sigma2_u <- NA
+Qt_pred <- diag(2*(K+1))
+diag(Qt_pred)[1:(K+1)] <- sigma2_u
+diag(Qt_pred)[-c(1:(K+1))] <- NA 
 for(I in 1:(K+1-1)){
   for(J in (I+1):(K+1)){
     rho_u <- kernel(x = abs(ages_max[J]-ages_max[I]))
     Qt_pred[I,J] <- Qt_pred[J,I] <- sigma2_u * rho_u
   }
 }
-Zt_pred <- fit$fit$Z[, seq(1, 3*(K+1), by = 3), ]
-a1_pred <- tail(U, n = 1 ,k = 1) # last year of training
-P1_pred <- smooth$V %>%
-  tail(n = c(3*(K+1), 3*(K+1), 1)) %>% # selecting last year 
-  # extracting only var(u) components
-  `[`(seq(1, 3*(K+1), by = 3), seq(1, 3*(K+1), by = 3), ) 
+Rt_pred <- diag(1, 2*(K+1), 2*(K+1))
+Tt_pred_mat <- diag(1, 2*(K+1), 2*(K+1))
+Tt_pred_mat[1:(K+1),(K+2):(2*(K+1))] <- diag(1, K+1, K+1)
+
+Zt_pred_ <- fit$fit$Z[, seq(1, 3*(K+1), by = 3), ]
+Zt_pred <- matrix(0, Z, 2*(K+1))
+Zt_pred[, 1:(K+1)] <- Zt_pred_
+a1_pred <- matrix(c(U_m_B25 + Tt_pred*dU_B25,
+                    Tt_pred*dU_B25), 
+                  2*(K+1), 1) # last year of training
+
+P1_pred <- matrix(0, 2*(K+1), 2*(K+1))
+P1_pred[1:(K+1), 1:(K+1)] <- smooth$P[seq(1, 3*(K+1), by = 3),seq(1, 3*(K+1), by = 3),train-n_for+1] # +
+# diag(Tt_pred^2 * drift_median_var_B25)
+diag(P1_pred[-c(1:(K+1)), -c(1:(K+1))]) <- Tt_pred^2 * drift_median_var_B25
+
+Ht_pred <- diag(NA, Z)
+state_names <- c(paste('U', 0:K, sep = ''),
+                 paste('drift', 0:K, sep = ''))
+
+updatefn <- function(pars, 
+                     model,
+                     Z,
+                     delta_lambda_sq){
+  sigma2_u <- exp(pars[1])
+  drift_var <- exp(pars[2])
+  Qt_pred <- diag(2*(K+1))
+  diag(Qt_pred)[1:(K+1)] <- sigma2_u
+  diag(Qt_pred)[-c(1:(K+1))] <- delta_lambda_sq*drift_var
+  for(I in 1:(K+1-1)){
+    for(J in (I+1):(K+1)){
+      rho_u <- kernel(x = abs(ages_max[J]-ages_max[I]))
+      Qt_pred[I,J] <- Qt_pred[J,I] <- sigma2_u * rho_u
+    }
+  }
+  model["Q"] <- Qt_pred
+  model["H"] <- diag(exp(pars[3]), Z)
+  model
+}
+
+rwd_gauss <- SSModel(tail(model$model$y, n = c(n_for, Z)) ~ -1 + 
+                       SSMcustom(Z = Zt_pred, T = Tt_pred_mat,
+                                 R = Rt_pred, Q = Qt_pred,
+                                 state_names = state_names,
+                                 a1 = a1_pred,
+                                 P1 = P1_pred,
+                                 # P1inf = diag(1, 2*(K+1), 2*(K+1)),
+                                 n = nrow(tail(model$model$y, n = n_for, k = 1))), 
+                     distribution = 'gaussian',
+                     H = Ht_pred)
+starting_values <- lapply(1:3, 
+                          function(x) log(runif(3, min = 1e-4, max = 2)))
+rwd_kfas_fit_list <- lapply(starting_values,
+                            function(init){
+                              fitSSM(rwd_gauss,
+                                     inits = init,
+                                     method = "Nelder-Mead",
+                                     updatefn = updatefn,
+                                     checkfn = fit$info$checkfn,
+                                     update_args = list(Z = Z,
+                                                        delta_lambda_sq = Tt_pred^2))
+                            })
+best_fit <- which.min(sapply(rwd_kfas_fit_list, . %>% 
+                               `$`(.,optim.out) %>%
+                               `$`(.,value)))
+rwd_kfas_fit <- rwd_kfas_fit_list[[best_fit]]
+```
+
+Once the random walk with drift model is estimated, we can forecast $\beta_t$ for, e.g., the next 10 years.
+```{r forecast}
+rwd_gauss_fit <- rwd_kfas_fit$model
+rwd_smooth <- KFS(rwd_gauss_fit,
+                  smoothing = c('state'))
+V_rwd <- rwd_smooth$V[,,n_for]
+Qt_pred <- rwd_gauss_fit$Q[,,1] 
+H_rwd <- rwd_gauss_fit$H[,,1] 
 # Prediction h-step ahead
+a1_pred <- tail(U, n = 1 ,k = 1) # Now a1 is last observed year
 U_pred <- matrix(NA, nrow = h, ncol = K+1)
+varU_ext_pred <- array(NA, dim = c(2*(K+1), 2*(K+1), h))
 f_pred <- matrix(NA, nrow = h, ncol = Z)
+varf_pred <- array(NA, dim = c(Z, Z, h))
 for(tt in 1:h){
   if(tt == 1){
-    U_pred[1,] <- as.numeric(a1_pred) + Tt_pred%*%dU
-    f_pred[1,] <- Zt_pred%*%U_pred[1,]
+    U_pred[1,] <- as.numeric(a1_pred[1:(K+1)]) + Tt_pred%*%dU
+    varU_ext_pred[,,1] <- Tt_pred_mat %*% V_rwd %*% t(Tt_pred_mat) + Qt_pred
+    f_pred[1,] <- Zt_pred_%*%U_pred[1,]
+    varf_pred[,,1] <- H_rwd + 
+      Zt_pred %*% varU_ext_pred[,,1] %*% t(Zt_pred)
   } else {
     U_pred[tt,] <- U_pred[tt-1,] + Tt_pred%*%dU
-    f_pred[tt,] <- Zt_pred%*%U_pred[tt,]
+    varU_ext_pred[,,tt] <- Tt_pred_mat %*% varU_ext_pred[,,tt-1] %*% Tt_pred_mat + Qt_pred 
+    f_pred[tt,] <- Zt_pred_%*%U_pred[tt,]
+    varf_pred[,,tt] <- H_rwd + 
+      Zt_pred %*% varU_ext_pred[,,tt] %*% t(Zt_pred)
   }
 }
-
-Upred <- list()
-for(kk in 1:(K+1)){
-  Upred <- c(Upred,
-            list(tibble(fit = U_pred[,kk])))
-}
-
-fpred <- list()
+pred <- list()
 for(zz in 1:Z){
-  fpred <- c(fpred,
-             list(tibble(fit = f_pred[,zz])))
+  pred <- c(pred,
+            list(tibble(fit = f_pred[,zz],
+                        upr = qnorm(p = 0.975,
+                                    mean = f_pred[,zz],
+                                    sd = sqrt(varf_pred[zz,zz,])),
+                        lwr = qnorm(p = 0.025,
+                                    mean = f_pred[,zz],
+                                    sd = sqrt(varf_pred[zz,zz,])))))
 }
+names(pred) <- as.character(0:(Z-1))
 ```
 
 For the purpose of the illustration, we report here the obtained forecasts for the next 10 years of the spline weights $\hat{\beta}_{t^*j}$, for $j=1,\dots,20$.
 ```{r beta_forecast}
-Upred %>% 
-  imap_dfr(.f = ~ (as_tibble(.) %>%
-             mutate(h_ahead = 1:h)),
-           .id = 'weight') %>%
-  mutate_at(vars(weight), as.numeric) %>%
+as_tibble(U_pred) %>%
+  mutate(h_ahead = 1:h) %>%
+  pivot_longer(-h_ahead, names_to = 'weight', values_to = 'fit') %>%
+  mutate_at(vars(weight), ~ str_extract(., '\\d+')) %>%
   mutate(t = tail(years,1) - 1 + h_ahead) -> forecast_beta
 
 forecast_beta %>%
@@ -566,13 +641,12 @@ forecast_beta %>%
   pivot_wider(names_from = 'label', values_from = 'fit') %>%
   reactable(columns = list(t = colDef(name = 'Year')))
 ```
-Finally, we plot the forecasted age-specific mortality curves.
+Finally, we plot the mean of the forecasted age-specific mortality curves.
 ```{r plot_forecast}
-fpred %>% 
-  imap_dfr(.f = ~ (as_tibble(.) %>%
-             mutate(h_ahead = 1:h)),
-           .id = 'age') %>%
-  mutate_at(vars(age), as.numeric) %>%
+as_tibble(f_pred) %>%
+  mutate(h_ahead = 1:h) %>%
+  pivot_longer(-h_ahead, names_to = 'age', values_to = 'fit') %>%
+  mutate_at(vars(age), ~ as.numeric(str_extract(., '\\d+'))) %>%
   mutate(t = tail(years,1) - 1 + h_ahead) -> forecast_age
 
 forecast_age %>%
