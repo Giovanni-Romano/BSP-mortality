@@ -240,7 +240,7 @@ model_list <- lapply(data_list,
                                       kernel = matern_kernel))
 ```
 
-Once the `KFAS` model is defined, we estimate the hyperparameters using the `bsp.fit` function. To guarantee robustness of the result, it is advisable to repeat the optimization with different starting points. The function allows to specify the argument `rep` and `parallel` to possibly parallelize the optimization with `rep` different starting points. In `source/setup.R`, the default is `rep = 100`. Moreover, following Zhu and Dunson (2013) our implementation includes a penalization on the parameters $\sigma_\beta$ and $\sigma_a$ equivalent to the Inverse-Gamma prior used in their work. Check function `bsp.fit` in `source/BSP.R` for further details.
+Once the `KFAS` model is defined, we estimate the hyperparameters using the `bsp.fit` function. To guarantee robustness of the result, it is advisable to repeat the optimization with different starting points. The function allows to specify the argument `rep` and `parallel` to possibly parallelize the optimization with `rep` different starting points. In `source/setup.R`, the default is `rep = 5`. Moreover, following Zhu and Dunson (2013) our implementation includes a penalization on the parameters $\sigma_\beta$ and $\sigma_a$ equivalent to the Inverse-Gamma prior used in their work. Check function `bsp.fit` in `source/BSP.R` for further details.
 ```{r fit, eval = FALSE}
 fit_list <- lapply(model_list,
                    . %>%
@@ -248,7 +248,7 @@ fit_list <- lapply(model_list,
                               rep = rep, 
                               method = 'Nelder-Mead', 
                               parallel = TRUE, 
-                              maxcl = 50))
+                              maxcl = rep))
 ```
 
 If parallelization is not feasible for the user, the above code might take long time to run. For this purpouse, we provide the result of the fit in the file `output/ITA_fit.Rdata` (alternatively, one can run the above chunk with a smaller number of `rep`). 
