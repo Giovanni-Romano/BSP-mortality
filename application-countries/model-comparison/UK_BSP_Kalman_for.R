@@ -1,11 +1,14 @@
 require(here)
 require(tidyverse)
 require(KFAS)
-require(doParallel)
+require(parallel)
 
 rm(list=ls())
 
 set.seed(43532)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 3)
 
 output_collector <- list()
 output_collector <- append(output_collector, list(info=Sys.time()))

@@ -1,11 +1,14 @@
 require(here)
 require(tidyverse)
 require(KFAS)
-require(doParallel)
+require(parallel)
 
 rm(list=ls())
 
 set.seed(546234)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 3)
 
 output_collector <- list()
 output_collector <- append(output_collector, list(info=Sys.time()))
@@ -54,4 +57,4 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','US_uq_for.Rdata'))
+     file = here('output', 'US_uq_for.Rdata'))
