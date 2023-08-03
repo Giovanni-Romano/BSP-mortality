@@ -412,14 +412,29 @@ bsp.fit <- function(model,
                                                   max = 1)))
   # Optimization
   if(parallel){
-    registerDoParallel(cores = min(rep, 
-                                   maxcl))
-    cl_fit <- makeCluster(min(rep, 
-                              maxcl), 
-                          type = "FORK")
-    fit_list <- parLapply(cl_fit,
-                          starting_values, 
-                          function(init){
+    # registerDoParallel(cores = min(rep, 
+    #                                maxcl))
+    # cl_fit <- makeCluster(min(rep, 
+    #                           maxcl), 
+    #                       type = "FORK")
+    # fit_list <- parLapply(cl_fit,
+    #                       starting_values, 
+    #                       function(init){
+    #                         try(optim(par = init,
+    #                                   fn = fn_optim,
+    #                                   method = method,
+    #                                   control = list(maxit = 1e6),
+    #                                   model = model_gauss,
+    #                                   updatefn = updatefn,
+    #                                   checkfn = checkfn,
+    #                                   K = info$K,
+    #                                   Z = info$Z,
+    #                                   kernel = info$kernel,
+    #                                   ages_max = info$ages_max), TRUE)
+    #                       })
+    # stopCluster(cl_fit)
+    fit_list <- mclapply(starting_values, 
+                         FUN = function(init){
                             try(optim(par = init,
                                       fn = fn_optim,
                                       method = method,
@@ -432,7 +447,6 @@ bsp.fit <- function(model,
                                       kernel = info$kernel,
                                       ages_max = info$ages_max), TRUE)
                           })
-    stopCluster(cl_fit)
   } else{
     fit_list <- lapply(starting_values, 
                        function(init){
@@ -525,14 +539,13 @@ ngp.fit <- function(model,
                                                   max = 1)))
   # Optimization
   if(parallel){
-    registerDoParallel(cores = min(rep, 
-                                   maxcl))
-    cl_fit <- makeCluster(min(rep, 
-                              maxcl), 
-                          type = "FORK")
-    fit_list <- parLapply(cl_fit,
-                          starting_values, 
-                          function(init){
+    # registerDoParallel(cores = min(rep, 
+    #                                maxcl))
+    # cl_fit <- makeCluster(min(rep, 
+    #                           maxcl), 
+    #                       type = "FORK")
+    fit_list <- mclapply(starting_values, 
+                         FUN = function(init){
                             try(optim(par = init,
                                       fn = fn_optim,
                                       method = method,
@@ -543,7 +556,7 @@ ngp.fit <- function(model,
                                       K = info$K,
                                       Z = info$Z), TRUE)
                           })
-    stopCluster(cl_fit)
+    # stopCluster(cl_fit)
   } else{
     fit_list <- lapply(starting_values, 
                        function(init){

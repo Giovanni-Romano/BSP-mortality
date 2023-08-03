@@ -29,7 +29,7 @@ Then, load and source all the necessary libraries and functions. The package `KF
 ```{r setup_environment}
 library(tidyverse)
 library(KFAS)
-library(doParallel)
+library(parallel)
 library(plotly)
 library(ggh4x)
 library(ggrepel)
@@ -40,6 +40,9 @@ source(here('source','BSP.R'))
 source(here('source','setup.R'))
 source(here('source','helper_fun.R'))
 set.seed(4238)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 3)
 theme_set(
   theme_light() +
     theme(

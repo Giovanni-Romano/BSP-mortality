@@ -1,11 +1,14 @@
 require(here)
 require(tidyverse)
 require(KFAS)
-require(doParallel)
+require(parallel)
 
 rm(list=ls())
 
 set.seed(2345)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 3)
 
 source(here('source','BSP.R'))
 source(here('source','setup.R'))
