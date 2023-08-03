@@ -193,17 +193,17 @@ rm(list = 'res_forward')
 
 
 # Results
-save(list = c("BSP_uq_res_age",
-              "APC_res_age",
-              "LC_res_age",
-              "CBD_res_age",
-              "PLAT_res_age",
-              "RH_res_age",
-              "NGP_res_age",
-              "Kalman_res_age",
-              "HU_res_age",
-              "CP_res_age"),
-     file = here('output','results_uq_for.Rdata'))
+# save(list = c("BSP_uq_res_age",
+#               "APC_res_age",
+#               "LC_res_age",
+#               "CBD_res_age",
+#               "PLAT_res_age",
+#               "RH_res_age",
+#               "NGP_res_age",
+#               "Kalman_res_age",
+#               "HU_res_age",
+#               "CP_res_age"),
+#      file = here('output','results_uq_for.Rdata'))
 
 load(here('output','results_uq_for.Rdata'))
 
