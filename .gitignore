@@ -16,4 +16,5 @@ output/*
 *.pdf
 *.html
 !application-countries/BSP_stepbystep.html
+notes.txt
 
