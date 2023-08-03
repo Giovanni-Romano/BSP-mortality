@@ -1,11 +1,14 @@
 require(here)
 require(tidyverse)
 require(StMoMo)
-require(doParallel)
+require(parallel)
 
 rm(list=ls())
 
 set.seed(3542)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 10)
 
 load(here('output','mortality.Rdata'))
 output_collector <- list()
@@ -20,7 +23,7 @@ h_step <- 10
 output_collector <- append(output_collector, list(train = train, h_step = h_step))
 
 # Function to fit  and forecast
-fit_sim <- function(t, train, mod, h, stmomo_data, years, gc.order = NULL, nsim = 10){
+fit_sim <- function(t, train, mod, h, stmomo_data, years, nsim){
   wxt_osa <- genWeightMat(ages = stmomo_data$ages,
                           years = years[1:t], clip = 3)
   
@@ -29,7 +32,6 @@ fit_sim <- function(t, train, mod, h, stmomo_data, years, gc.order = NULL, nsim 
     err <- try(fit <- fit(mod,
                           data = stmomo_data,
                           wxt = wxt_osa,
-                          gc.order = gc.order,
                           years = years,
                           years.fit = years[1:t],
                           verbose = FALSE))
@@ -63,19 +65,28 @@ rolling <- function(cg){
                       years = stmomo_data$years, 
                       clip = 3)
   
-  registerDoParallel(cores = 50)
-  cl <- makeCluster(50, type = "FORK")
-  CBDsim_ <- parLapply(cl,
-                       train:length(years),
-                       . %>%
-                         fit_sim(., 
-                                 train = train, 
-                                 mod = CBD, 
-                                 h = h_step, 
-                                 stmomo_data = stmomo_data,
-                                 years = years,
-                                 nsim = 100))
-  stopCluster(cl)
+  # registerDoParallel(cores = 10)
+  # cl <- makeCluster(10, type = "FORK")
+  CBDsim_ <- mclapply(train:length(years),
+                      FUN = . %>%
+                        fit_sim(., 
+                                train = train, 
+                                mod = CBD, 
+                                h = h_step, 
+                                stmomo_data = stmomo_data,
+                                years = years,
+                                nsim = 500))
+  # CBDsim_ <- parLapply(cl,
+  #                      train:length(years),
+  #                      . %>%
+  #                        fit_sim(., 
+  #                                train = train, 
+  #                                mod = CBD, 
+  #                                h = h_step, 
+  #                                stmomo_data = stmomo_data,
+  #                                years = years,
+  #                                nsim = 100))
+  # stopCluster(cl)
   
   
   CBDsim <- CBDsim_ %>%
@@ -98,5 +109,5 @@ output_collector <- append(output_collector, list(warnings = warnings()))
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','CBD_for.Rdata'))
+     file = here('output', 'CBD_for.Rdata'))
 

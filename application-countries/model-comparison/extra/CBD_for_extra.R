@@ -20,7 +20,7 @@ h_step <- 10
 output_collector <- append(output_collector, list(train = train, h_step = h_step))
 
 # Function to fit  and forecast
-fit_sim <- function(t, train, mod, h, stmomo_data, years, gc.order = NULL, nsim = 10){
+fit_sim <- function(t, train, mod, h, stmomo_data, years, nsim){
   wxt_osa <- genWeightMat(ages = stmomo_data$ages,
                           years = years[1:t], clip = 3)
   
@@ -29,7 +29,6 @@ fit_sim <- function(t, train, mod, h, stmomo_data, years, gc.order = NULL, nsim 
     err <- try(fit <- fit(mod,
                           data = stmomo_data,
                           wxt = wxt_osa,
-                          gc.order = gc.order,
                           years = years,
                           years.fit = years[1:t],
                           verbose = FALSE))

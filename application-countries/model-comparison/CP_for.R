@@ -3,11 +3,14 @@ require(magrittr)
 require(purrr)
 require(dplyr)
 require(MortalitySmooth) 
-require(doParallel)
+require(parallel)
 
 rm(list=ls())
 
 set.seed(3415)
+RNGkind("L'Ecuyer-CMRG")
+
+options(mc.cores = 10)
 
 load(here('output','mortality.Rdata'))
 output_collector <- list()
@@ -32,7 +35,7 @@ output_collector <- append(output_collector, list(train = train, h_step = h_step
 years0 <- years
 
 # Function to fit  and forecast
-fit_sim <- function(t, train, Y0, E0, years0, nsim = 10){
+fit_sim <- function(t, train, Y0, E0, years0, nsim){
   m <- length(ages)
   years1 <- years0[1:t]
   n1 <- length(years1)
@@ -165,15 +168,15 @@ rolling <- function(cg){
   
   ## observed years
   years0 <- years0[1:nrow(Y0)]
-
-  CPsim <- lapply(train:length(years0),
-                  . %>%
-                    fit_sim(., 
-                            train = train, 
-                            Y0 = t(Y0),
-                            E0 = t(E0),
-                            years0 = years0,
-                            nsim = 100))
+  
+  CPsim <- mclapply(train:length(years0),
+                    FUN = . %>%
+                      fit_sim(., 
+                              train = train, 
+                              Y0 = t(Y0),
+                              E0 = t(E0),
+                              years0 = years0,
+                              nsim = 500))
   
   return(CPsim)
 }
@@ -193,6 +196,6 @@ output_collector <- append(output_collector, list(warnings = warnings()))
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output','CP_boot_for.Rdata'))
+     file = here('output', 'CP_boot_for.Rdata'))
 
 
