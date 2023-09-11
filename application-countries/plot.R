@@ -243,7 +243,7 @@ cbind('U0' = rep(0, nrow(S)), S) %>%
              y = factor(weight, 
                         levels = paste('U', K:0, sep = '')))) +
   geom_tile(aes(fill = label, alpha = value), colour = "white", size = 0.4) +
-  labs(y = NULL, x = NULL) +
+  labs(y = NULL, x = "Age") +
   guides(fill = "none", alpha = "none") +
   scale_x_continuous(breaks = seq(0,100,by=5), limits = c(-0.5,100)) + #, sec.axis = dup_axis()) +
   scale_y_discrete(position = 'left', labels = UtoG_Tex) +
@@ -317,14 +317,14 @@ smoothing_tibble_adj %>%
   filter(weight %in% c('U0','U7','U11'),
          gender == 'Female') %>%
   mutate(label_dem = case_when(range == 'Newborn' ~ 'Infant (age 0)',
-                               range == '23~32' ~ 'Young (age 23 ~ 32)',
-                               range == '46~64' ~ 'Adult (age 46 ~ 64)')) %>%
+                               range == '23~32' ~ 'Young (age 23 - 32)',
+                               range == '46~64' ~ 'Adult (age 46 - 64)')) %>%
   mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
          alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
   mutate_at(vars(label_dem), . %>% factor(.,
                                           levels = c('Infant (age 0)',
-                                                     'Young (age 23 ~ 32)',
-                                                     'Adult (age 46 ~ 64)'))) %>%
+                                                     'Young (age 23 - 32)',
+                                                     'Adult (age 46 - 64)'))) %>%
   ggplot(aes(x = t, y = value)) + 
   geom_segment(data = tibble(x = 1933,
                              y = 0,
@@ -343,11 +343,11 @@ smoothing_tibble_adj %>%
                                 rep(1943,4)),
                           gender = 'Female',
                           label_dem = factor(c(rep('Infant (age 0)',4),
-                                               rep('Young (age 23 ~ 32)',4),
-                                               rep('Adult (age 46 ~ 64)',4)),
+                                               rep('Young (age 23 - 32)',4),
+                                               rep('Adult (age 46 - 64)',4)),
                                              levels = c('Infant (age 0)',
-                                                        'Young (age 23 ~ 32)',
-                                                        'Adult (age 46 ~ 64)')),
+                                                        'Young (age 23 - 32)',
+                                                        'Adult (age 46 - 64)')),
                           state = 'U',
                           y = c(-5.2,-5.6,-6,-6.4,
                                 -2.3,-2.7,-3.1,-3.5,
@@ -369,11 +369,11 @@ smoothing_tibble_adj %>%
                              country = rep(c('ITA','US','UK','SWE'),3),
                              gender = 'Female',
                              label_dem = factor(c(rep('Infant (age 0)',4),
-                                                  rep('Young (age 23 ~ 32)',4),
-                                                  rep('Adult (age 46 ~ 64)',4)),
+                                                  rep('Young (age 23 - 32)',4),
+                                                  rep('Adult (age 46 - 64)',4)),
                                                 levels = c('Infant (age 0)',
-                                                           'Young (age 23 ~ 32)',
-                                                           'Adult (age 46 ~ 64)')),
+                                                           'Young (age 23 - 32)',
+                                                           'Adult (age 46 - 64)')),
                              state = 'U'),
                aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
   facet_nested(factor(state, levels = c('U', 'dU'),
@@ -409,14 +409,14 @@ smoothing_tibble_adj %>%
   filter(weight %in% c('U0','U7','U11'),
          gender == 'Male') %>%
   mutate(label_dem = case_when(range == 'Newborn' ~ 'Infant (age 0)',
-                               range == '23~32' ~ 'Young (age 23 ~ 32)',
-                               range == '46~64' ~ 'Adult (age 46 ~ 64)')) %>%
+                               range == '23~32' ~ 'Young (age 23 - 32)',
+                               range == '46~64' ~ 'Adult (age 46 - 64)')) %>%
   mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
          alpha_rib = ifelse(country == 'ITA', 0.2, 0.2)) %>%
   mutate_at(vars(label_dem), . %>% factor(.,
                                           levels = c('Infant (age 0)',
-                                                     'Young (age 23 ~ 32)',
-                                                     'Adult (age 46 ~ 64)'))) %>%
+                                                     'Young (age 23 - 32)',
+                                                     'Adult (age 46 - 64)'))) %>%
   ggplot(aes(x = t, y = value)) + 
   geom_segment(data = tibble(x = 1933,
                              y = 0,
@@ -436,11 +436,11 @@ smoothing_tibble_adj %>%
                                 rep(1943,4)),
                           gender = 'Male',
                           label_dem = factor(c(rep('Infant (age 0)',4),
-                                               rep('Young (age 23 ~ 32)',4),
-                                               rep('Adult (age 46 ~ 64)',4)),
+                                               rep('Young (age 23 - 32)',4),
+                                               rep('Adult (age 46 - 64)',4)),
                                              levels = c('Infant (age 0)',
-                                                        'Young (age 23 ~ 32)',
-                                                        'Adult (age 46 ~ 64)')),
+                                                        'Young (age 23 - 32)',
+                                                        'Adult (age 46 - 64)')),
                           state = 'U',
                           y = c(-4.9,-5.3,-5.7,-6.1,
                                 -2.1,-2.5,-2.9,-3.3,
@@ -462,11 +462,11 @@ smoothing_tibble_adj %>%
                              country = rep(c('ITA','US','UK','SWE'),3),
                              gender = 'Male',
                              label_dem = factor(c(rep('Infant (age 0)',4),
-                                                  rep('Young (age 23 ~ 32)',4),
-                                                  rep('Adult (age 46 ~ 64)',4)),
+                                                  rep('Young (age 23 - 32)',4),
+                                                  rep('Adult (age 46 - 64)',4)),
                                                 levels = c('Infant (age 0)',
-                                                           'Young (age 23 ~ 32)',
-                                                           'Adult (age 46 ~ 64)')),
+                                                           'Young (age 23 - 32)',
+                                                           'Adult (age 46 - 64)')),
                              state = 'U'), aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
   facet_nested(factor(state, levels = c('U', 'dU'),
                       labels = c(U = latex2exp::TeX(r'($\beta$)'),
@@ -575,7 +575,7 @@ smoothing_tibble_adj %>%
 smoothing_tibble_adj %>%
   left_join(age_classes, by = "weight") %>%
   filter(weight == 'U7') %>%
-  mutate(label_dem = 'Young (age 23 ~ 32)') %>%
+  mutate(label_dem = 'Young (age 23 - 32)') %>%
   mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
          alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
   ggplot(aes(x = t, y = value)) + 
@@ -597,8 +597,8 @@ smoothing_tibble_adj %>%
                                 rep(1938,4)),
                           gender = c(rep('Female', 4),
                                      rep('Male', 4)),
-                          label_dem = factor(c(rep('Young (age 23 ~ 32)',4),
-                                               rep('Young (age 23 ~ 32)',4))),
+                          label_dem = factor(c(rep('Young (age 23 - 32)',4),
+                                               rep('Young (age 23 - 32)',4))),
                           state = 'U',
                           y = rep(c(-5.3,-5.6,-5.9,-6.2),2),
                           country = rep(c('it','us','gb','se'),2)),
@@ -612,7 +612,7 @@ smoothing_tibble_adj %>%
                              country = rep(c('ITA','US','UK','SWE'),2),
                              gender = c(rep('Female',4),
                                         rep('Male',4)),
-                             label_dem = factor(c(rep('Young (age 23 ~ 32)',8))),
+                             label_dem = factor(c(rep('Young (age 23 - 32)',8))),
                              state = 'U'),
                aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
   facet_nested(factor(state, levels = c('U', 'dU'),
@@ -647,7 +647,7 @@ smoothing_tibble_adj %>%
 smoothing_tibble_adj %>%
   left_join(age_classes, by = "weight") %>%
   filter(weight == 'U11') %>%
-  mutate(label_dem = 'Adult (age 46 ~ 64)') %>%
+  mutate(label_dem = 'Adult (age 46 - 64)') %>%
   mutate(alpha = ifelse(country == 'ITA', 0.6, 0.3),
          alpha_rib = ifelse(country == 'ITA', 0.4, 0.2)) %>%
   ggplot(aes(x = t, y = value)) + 
@@ -669,8 +669,8 @@ smoothing_tibble_adj %>%
                                 rep(1938,4)),
                           gender = c(rep('Female', 4),
                                      rep('Male', 4)),
-                          label_dem = factor(c(rep('Adult (age 46 ~ 64)',4),
-                                               rep('Adult (age 46 ~ 64)',4))),
+                          label_dem = factor(c(rep('Adult (age 46 - 64)',4),
+                                               rep('Adult (age 46 - 64)',4))),
                           state = 'U',
                           y = rep(c(-4.1,-4.25,-4.4,-4.55),2),
                           country = rep(c('it','us','gb','se'),2)),
@@ -684,7 +684,7 @@ smoothing_tibble_adj %>%
                              country = rep(c('ITA','US','UK','SWE'),2),
                              gender = c(rep('Female',4),
                                         rep('Male',4)),
-                             label_dem = factor(c(rep('Adult (age 46 ~ 64)',8))),
+                             label_dem = factor(c(rep('Adult (age 46 - 64)',8))),
                              state = 'U'),
                aes(x = x, y = y, xend = xend, yend = yend, color = country)) +
   facet_nested(factor(state, levels = c('U', 'dU'),
@@ -724,23 +724,26 @@ ggsave(plot_coeff,
 ## Difference 2020 and average last 5   #
 ## years (Covid plot)                   #
 #########################################
+# Changing tilda to dash
+age_classes2 <- age_classes %>%
+  mutate_at(vars(range), \(x)(str_replace(x,'~','-')))
 
 diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  left_join(age_classes, by = "spline") %>%
+  left_join(age_classes2, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
          min = min(value.m - 2*value.sd) - 0.04) %>%
   pivot_longer(cols = c(max,min),
                names_to = "stripe.what", 
                values_to = "stripe.limit") %>%
-  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+  mutate(stripe = ifelse(range %in% age_classes2$range[seq(1,K+1,by=2)],
                          0.05,0)) %>%
   group_by(gender, country, range) %>%
   filter(gender == 'Male') %>%
-  ggplot(aes(x = factor(range, levels=age_classes$range),
+  ggplot(aes(x = factor(range, levels=age_classes2$range),
              y = value.m,
              group = country)) +
   geom_col(aes(y = stripe.limit, alpha = stripe), 
@@ -799,18 +802,18 @@ diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  left_join(age_classes, by = "spline") %>%
+  left_join(age_classes2, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
          min = min(value.m - 2*value.sd) - 0.04) %>%
   pivot_longer(cols = c(max,min),
                names_to = "stripe.what", 
                values_to = "stripe.limit") %>%
-  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+  mutate(stripe = ifelse(range %in% age_classes2$range[seq(1,K+1,by=2)],
                          0.05,0)) %>%
   group_by(gender, country, range) %>%
   filter(gender == 'Female') %>%
-  ggplot(aes(x = factor(range, levels=age_classes$range),
+  ggplot(aes(x = factor(range, levels=age_classes2$range),
              y = value.m,
              group = country)) +
   geom_col(aes(y = stripe.limit, alpha = stripe), 
@@ -877,18 +880,18 @@ diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  left_join(age_classes, by = "spline") %>%
+  left_join(age_classes2, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
          min = min(value.m - 2*value.sd) - 0.04) %>%
   pivot_longer(cols = c(max,min),
                names_to = "stripe.what", 
                values_to = "stripe.limit") %>%
-  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+  mutate(stripe = ifelse(range %in% age_classes2$range[seq(1,K+1,by=2)],
                          0.05,0)) %>%
   group_by(gender, country, range) %>%
   filter(gender == 'Male') %>%
-  ggplot(aes(x = factor(range, levels=age_classes$range),
+  ggplot(aes(x = factor(range, levels=age_classes2$range),
              y = value.m,
              group = country)) +
   geom_col(aes(y = stripe.limit, alpha = stripe), 
@@ -958,18 +961,18 @@ diff_state_2020avg5_adj %>%
   group_by(spline, gender, country, state) %>%
   summarise(value.m = mean(value),
             value.sd = sd(value)) %>%
-  left_join(age_classes, by = "spline") %>%
+  left_join(age_classes2, by = "spline") %>%
   group_by(gender) %>%
   mutate(max = max(value.m + 2*value.sd) + 0.04,
          min = min(value.m - 2*value.sd) - 0.04) %>%
   pivot_longer(cols = c(max,min),
                names_to = "stripe.what", 
                values_to = "stripe.limit") %>%
-  mutate(stripe = ifelse(range %in% age_classes$range[seq(1,K+1,by=2)],
+  mutate(stripe = ifelse(range %in% age_classes2$range[seq(1,K+1,by=2)],
                          0.05,0)) %>%
   group_by(gender, country, range) %>%
   filter(gender == 'Female') %>%
-  ggplot(aes(x = factor(range, levels=age_classes$range),
+  ggplot(aes(x = factor(range, levels=age_classes2$range),
              y = value.m,
              group = country)) +
   geom_col(aes(y = stripe.limit, alpha = stripe), 
@@ -1239,11 +1242,11 @@ data_ita %>%
   scale_y_continuous(breaks = c(-1.5,-4.5,-7.5)) +
   scale_x_continuous(n.breaks = 10) +
   guides(color = "none") +
+  labs(x = 'Age', y = 'log(Rate)') +
   theme(panel.grid = element_blank(),
         text = element_text(size = 12),
         strip.background = element_rect(fill = 'grey95'),
-        plot.margin = margin(r = 0),
-        axis.title = element_blank()) -> plot_ages
+        plot.margin = margin(r = 0)) -> plot_ages
 
 ggsave(plot_ages,
        filename = here('output','ita_us_ages.pdf'),
@@ -1329,11 +1332,11 @@ signal_smoothing_tibble_adj %>%
   scale_fill_distiller(palette = 'Spectral', direction = -1) +
   scale_color_distiller(palette = 'Spectral', direction = -1) +
   guides(color = "none") +
-  labs(fill = latex2exp::TeX('$f_{t}(x)$')) +
+  labs(fill = latex2exp::TeX('$f_{t}(x)$'),
+       x = 'Year', y = 'Age') +
   scale_x_continuous(expand = c(0, 0), n.breaks = 6) +
   scale_y_continuous(expand = c(0, 0), n.breaks = 8) +
-  theme(axis.title = element_blank(),
-        panel.grid.major = element_blank(),
+  theme(panel.grid.major = element_blank(),
         panel.spacing = unit(0, "cm"),
         plot.margin = margin(r = 0, t = 0),
         panel.grid.minor = element_blank(),

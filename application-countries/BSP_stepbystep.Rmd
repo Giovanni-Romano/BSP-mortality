@@ -317,8 +317,8 @@ smoothing_tibble <- lapply(smooth_list, . %>%
 smoothing_tibble_adj <- smoothing_tibble %>%
   filter(state %in% c('U','dU')) %>%
   mutate(lambda_delta = case_when(state == 'U' ~ 1,
-                                  data == 'ita_man' ~ lambda_est$ita_man*delta*0.01,
-                                  data == 'ita_woman' ~ lambda_est$ita_woman*delta*0.01)) %>%
+                                  data == 'ita_man' ~ lambda_est$ita_man*delta,
+                                  data == 'ita_woman' ~ lambda_est$ita_woman*delta)) %>%
   mutate_at(vars(value, value.sd), ~ .*lambda_delta) %>%
   mutate_at(vars(gender), ~ ifelse(. == 'man', 'Male', 'Female')) %>%
   mutate_at(vars(country), .f = toupper)
