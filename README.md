@@ -1,6 +1,6 @@
 # Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients
 
-This repository is associated with the article **"Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients"** and aims at providing detailed materials and codes to implement the **BSP** model presented in the article and to **fully reproduce the results in Sections 4**.
+This repository is associated with the article **"Learning and Forecasting of Age–Specific Period Mortality via B–Spline Processes with Locally–Adaptive Dynamic Coefficients"** and aims at providing detailed materials and codes to implement the **BSP** model presented in the article and to **fully reproduce the results in Section 4**.
 
 In order to obtain all the results from the paper, run `main.R`. A step-by-step explanation on how to implement and fit the model is given in the notebook `application-countries/BSP_stepbystep.Rmd`.
 
