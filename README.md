@@ -23,7 +23,7 @@ A general overview of the organization of the repository is provided below.
 
 ### Running additional experiments
 
-It is possible to include the model comparison for the additional countries of France (FRA), Denmark (DNK), and Czech Republic (CZE) by first running `/application-countries/model-comparison/extra/main_extra.R` and then setting `flag_extra_countries <- TRUE` before running `/application-countries/model-comparison/results.R`.
+It is possible to include the model comparison for the additional countries France (FRA), Denmark (DNK), and Czech Republic (CZE) by first running `/application-countries/model-comparison/extra/main_extra.R` and then setting `flag_extra_countries <- TRUE` before running `/application-countries/model-comparison/results.R`.
 
 In order to include the comparison with the plain nGP model and the Kalman forecast, it is necessary to run the respective scripts in `/application-countries/model-comparison/` and to set `flag_NGP_Kalman <- TRUE` before running `/application-countries/model-comparison/results.R`.
 
