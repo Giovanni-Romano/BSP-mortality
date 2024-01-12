@@ -208,8 +208,7 @@ bind_rows(BSP_uq_res_age,
            (data == 'swe_man') | (data == 'swe_woman')) %>%
   select(time_fit, age, h_ahead, model,
          data, time_pred, rmse,
-         rmse_log, mad, mad_log,
-         width95_log, inside) %>%
+         rmse_log, mad, mad_log, inside) %>%
   group_by(model, h_ahead) %>%
   summarise(median_abserr_log = median(mad_log),
             q25_abserr_log = quantile(mad_log,  probs = 0.25),
@@ -437,8 +436,7 @@ if(flag_NGP_Kalman)
              (data == 'swe_man') | (data == 'swe_woman')) %>%
     select(time_fit, age, h_ahead, model,
            data, time_pred, rmse,
-           rmse_log, mad, mad_log,
-           width95_log, inside) %>%
+           rmse_log, mad, mad_log, inside) %>%
     group_by(model, h_ahead) %>%
     summarise(median_abserr_log = median(mad_log),
               q25_abserr_log = quantile(mad_log,  probs = 0.25),
@@ -471,8 +469,7 @@ if(flag_extra_countries)
              (data == 'swe_man') | (data == 'swe_woman')) %>%
     select(time_fit, age, h_ahead, model,
            data, time_pred, rmse,
-           rmse_log, mad, mad_log,
-           width95_log, inside) -> res_base
+           rmse_log, mad, mad_log, inside) -> res_base
   
   load(here('output','results_uq_for_extra.Rdata'))
   bind_rows(BSP_uq_res_age,
@@ -486,8 +483,7 @@ if(flag_extra_countries)
     filter(time_pred <= 2020) %>%
     select(time_fit, age, h_ahead, model,
            data, time_pred, rmse,
-           rmse_log, mad, mad_log,
-           width95_log, inside) -> res_extra
+           rmse_log, mad, mad_log, inside) -> res_extra
   
   res_base %>%
     bind_rows(res_extra) %>%
