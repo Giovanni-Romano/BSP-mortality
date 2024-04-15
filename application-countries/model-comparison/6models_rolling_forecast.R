@@ -46,21 +46,51 @@ methods <- c("exact", "euler", "3ord")
 lambdas <- c(NA, 1)
 
 grid.values <- expand.grid(countries, genders, methods, lambdas) %>% 
-  setNames(c("country", "gender", "method.ssm", "lambda"))
+  setNames(c("country", "gender", "method.ssm", "lambda")) %>% 
+  as.matrix()
+grid.values[grid.values[, 'lambda'] == ' 1', 'lambda'] <- 1
 
-res_forward <- apply(grid.values,
-                     1,
-                     function(x) 
-                       rolling_uq(cg = paste(x['country'], x['gender'], sep = '_'), 
-                                  method.ssm = x['method.ssm'],
-                                  lambda = as.numeric(x['lambda']),
-                                  n_for = n_for,
-                                  parallel = FALSE))
 
-names(res_forward) <- cg
+# Rolling forecast
+start <- Sys.time()
+if (.Platform$OS.type == "unix"){
+  
+  cat("Unix OS detected. Parall execution of forecast in the 48 settings. \n")
+  
+  registerDoParallel(cores = min(rep,
+                                 maxcl))
+  cl_forecast <- makeCluster(24, type = "FORK")
+  
+  res_forward <- parApply(cl_forecast,
+                          grid.values,
+                          1,
+                          function(x) 
+                            rolling_uq(cg = paste(x['country'], x['gender'], sep = '_'), 
+                                       method.ssm = x['method.ssm'],
+                                       lambda = as.numeric(x['lambda']),
+                                       n_for = n_for,
+                                       parallel = FALSE))
+  
+} else {
+  cat("Windows OS detected. Sequential execution of forecast in the 48 settings. \n")
+  
+  res_forward <- apply(grid.values,
+                       1,
+                       function(x) 
+                         rolling_uq(cg = paste(x['country'], x['gender'], sep = '_'), 
+                                    method.ssm = x['method.ssm'],
+                                    lambda = as.numeric(x['lambda']),
+                                    n_for = n_for,
+                                    parallel = FALSE))
+}
+end <- Sys.time()
+
+
+names(res_forward) <- apply(grid.values, 1, paste, collapse = "_")
 
 output_collector <- append(output_collector, 
-                           list(country_gender = cg,
+                           list(forecast_settings = grid.values,
+                                execution_time = end - start,
                                 warnings = warnings()))
 
 save(list = c('output_collector',
