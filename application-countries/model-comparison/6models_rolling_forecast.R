@@ -60,7 +60,7 @@ if (.Platform$OS.type == "unix"){
   
   registerDoParallel(cores = min(rep,
                                  maxcl))
-  cl_forecast <- makeCluster(24, type = "FORK")
+  cl_forecast <- makeCluster(24, type = "FORK", outfile = "")
   
   res_forward <- parApply(cl_forecast,
                           grid.values,

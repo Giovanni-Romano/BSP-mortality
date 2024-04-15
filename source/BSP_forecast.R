@@ -214,7 +214,7 @@ rolling_uq <- function(cg,
   # Loading the data corrisponding to country cg
   country <- sub("_.*", "", cg)
   gender <- sub(".*_", "", cg)
-  print(paste('Doing', country, gender))
+  cat('Doing', country, gender, method.ssm, lambda, '\n')
   Y <- eval(parse(text = paste('Y', country, gender, sep = '_')))
   N <- eval(parse(text = paste('N', country, gender, sep = '_')))
   Tmax <- nrow(Y)
