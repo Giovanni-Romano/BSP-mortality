@@ -5,7 +5,7 @@ require(parallel)
 
 rm(list=ls())
 
-set.seed(32534)
+set.seed(5424)
 RNGkind("L'Ecuyer-CMRG")
 
 options(mc.cores = 3)
@@ -26,7 +26,7 @@ output_collector <- append(output_collector, list(train = train,
 # Mortality data
 load(here('output','mortality.Rdata'))
 
-years <- years[1:nrow(Y_swe_man)]
+years <- years[1:nrow(Y_ita_man)]
 
 # Model definition
 source(here('source','BSP.R'))
@@ -42,13 +42,23 @@ output_collector <- append(output_collector, list(delta = delta,
 # Loading forecast and forward-rolling functions
 source(here('source','BSP_forecast.R'))
 
-cg <- c('swe_man',
-        'swe_woman')
+countries <- c("ita", "swe", "uk", "us")
+genders <- c("man", "woman")
+methods <- c("exact", "euler", "3ord")
+lambdas <- c(NA, 1)
 
-res_forward <- lapply(cg, 
-                      . %>% rolling_uq(., 
-                                       n_for = n_for,
-                                       parallel = TRUE))
+grid.values <- expand.grid(countries, genders, methods, lambdas) %>% 
+  setNames(c("country", "gender", "method.ssm", "lambda"))
+
+res_forward <- apply(grid.values,
+                     1,
+                     function(x) 
+                       rolling_uq(cg = paste(x['country'], x['gender'], sep = '_'), 
+                                  method.ssm = x['method.ssm'],
+                                  lambda = as.numeric(x['lambda']),
+                                  n_for = n_for,
+                                  parallel = FALSE))
+
 names(res_forward) <- cg
 
 output_collector <- append(output_collector, 
@@ -57,4 +67,4 @@ output_collector <- append(output_collector,
 
 save(list = c('output_collector',
               'res_forward'),
-     file = here('output', 'SWE_uq_for.Rdata'))
+     file = here('output', '6models_forecast.Rdata'))

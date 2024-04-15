@@ -19,8 +19,8 @@ help_weight <- function(x){
 # OUTPUT:
 # - tibble of the smoothing distributino
 #
-smoothing2tibble <- function(out_kfas, country){
-  if(country == 'ITA') years <- years[1:(length(years)-1)]
+smoothing2tibble <- function(out_kfas){
+  years <- as.numeric(rownames(out_kfas$model$y))
   states_s <- out_kfas$alphahat
   var_states_s <- array_tree(out_kfas$V, margin=3)
   sigma_states_s <- lapply(var_states_s, function(x){sqrt(diag(x))})
