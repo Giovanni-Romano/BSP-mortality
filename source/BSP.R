@@ -456,7 +456,7 @@ bsp.fit <- function(model,
                                         "FORK",
                                         "PSOCK"))
     
-    clusterCall(cl_fit, function() {source("source/BSP_gio.R")})
+    clusterCall(cl_fit, function() {require(here); here('source', 'BSP.R')})
     
     fit_list <- parLapply(cl_fit,
                           starting_values,

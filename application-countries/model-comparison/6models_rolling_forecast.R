@@ -8,8 +8,6 @@ rm(list=ls())
 set.seed(5424)
 RNGkind("L'Ecuyer-CMRG")
 
-options(mc.cores = 3)
-
 output_collector <- list()
 output_collector <- append(output_collector, list(info=Sys.time()))
 
